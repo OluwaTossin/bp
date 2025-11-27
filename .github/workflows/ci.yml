@@ -60,9 +60,9 @@ jobs:
       run: |
         dotnet tool install -g dotnet-reportgenerator-globaltool
         reportgenerator \
-          -reports:./BPCalculator.Tests/coverage/coverage.cobertura.xml \
-          -targetdir:./coverage-report \
-          -reporttypes:Html;MarkdownSummaryGithub
+          "-reports:./BPCalculator.Tests/coverage/coverage.cobertura.xml" \
+          "-targetdir:./coverage-report" \
+          "-reporttypes:Html;MarkdownSummaryGithub"
     
     - name: Check coverage threshold
       run: |
