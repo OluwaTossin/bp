@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace BPCalculator
 {
@@ -19,6 +20,9 @@ namespace BPCalculator
         public const int SystolicMax = 190;
         public const int DiastolicMin = 40;
         public const int DiastolicMax = 100;
+        
+        // Logger for telemetry (will be injected where needed)
+        private static ILogger _logger;
 
         [Range(SystolicMin, SystolicMax, ErrorMessage = "Invalid Systolic Value")]
         public int Systolic { get; set; }                       // mmHG
@@ -26,6 +30,12 @@ namespace BPCalculator
         [Range(DiastolicMin, DiastolicMax, ErrorMessage = "Invalid Diastolic Value")]
         public int Diastolic { get; set; }                      // mmHG
 
+        // Static method to set logger
+        public static void SetLogger(ILogger logger)
+        {
+            _logger = logger;
+        }
+        
         // calculate BP category
         public BPCategory Category
         {
@@ -34,31 +44,43 @@ namespace BPCalculator
                 // Validation: Systolic must be greater than Diastolic
                 if (Systolic <= Diastolic)
                 {
+                    _logger?.LogWarning(
+                        "Invalid BP calculation attempt: Systolic={Systolic} <= Diastolic={Diastolic}",
+                        Systolic, Diastolic);
                     throw new ArgumentException("Systolic pressure must be greater than Diastolic pressure");
                 }
 
+                BPCategory result;
+                
                 // Classification based on assignment chart
                 // Low: Systolic < 90 OR Diastolic < 60
                 if (Systolic < 90 || Diastolic < 60)
                 {
-                    return BPCategory.Low;
+                    result = BPCategory.Low;
                 }
-                
                 // Ideal: Systolic 90-120 AND Diastolic 60-80
-                if (Systolic >= 90 && Systolic <= 120 && Diastolic >= 60 && Diastolic <= 80)
+                else if (Systolic >= 90 && Systolic <= 120 && Diastolic >= 60 && Diastolic <= 80)
                 {
-                    return BPCategory.Ideal;
+                    result = BPCategory.Ideal;
                 }
-                
                 // High: Systolic > 140 OR Diastolic > 90 (check this BEFORE Pre-High)
-                if (Systolic > 140 || Diastolic > 90)
+                else if (Systolic > 140 || Diastolic > 90)
                 {
-                    return BPCategory.High;
+                    result = BPCategory.High;
                 }
-                
                 // Pre-High: Systolic 121-140 OR Diastolic 81-90
                 // This catches everything between Ideal and High
-                return BPCategory.PreHigh;
+                else
+                {
+                    result = BPCategory.PreHigh;
+                }
+                
+                // Log BP calculation with structured data
+                _logger?.LogInformation(
+                    "BP calculation: Systolic={Systolic}, Diastolic={Diastolic}, Category={Category}",
+                    Systolic, Diastolic, result.ToString());
+                
+                return result;
             }
         }
     }

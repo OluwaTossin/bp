@@ -22,8 +22,8 @@ The plan consists of **eight clear phases**, each with actionable steps. Followi
 
 ## 🎯 Phase Progress Tracker
 
-- [ ] **Phase 0:** Foundation Setup
-- [ ] **Phase 1:** Application Logic & Testing
+- [x] **Phase 0:** Foundation Setup
+- [x] **Phase 1:** Application Logic & Testing
 - [ ] **Phase 2:** Telemetry & Observability
 - [ ] **Phase 3:** Terraform (Infrastructure-as-Code)
 - [ ] **Phase 4:** CI Pipeline (GitHub Actions)
@@ -36,34 +36,34 @@ The plan consists of **eight clear phases**, each with actionable steps. Followi
 
 ## PHASE 0 — FOUNDATION SETUP
 
-### Status: ⬜ Not Started
+### Status: ✅ COMPLETE (November 27, 2025)
 
 ### 0.1. Fork and Inspect Repository
-- [ ] Fork https://github.com/gclynch/bp to your GitHub account
-- [ ] Clone locally: `git clone <your-fork-url>`
-- [ ] Open in Visual Studio or VS Code
-- [ ] Confirm the application runs with `dotnet run`
-- [ ] Browse to `http://localhost:5000` and verify the UI loads
+- [x] Fork https://github.com/gclynch/bp to your GitHub account
+- [x] Clone locally: `git clone <your-fork-url>`
+- [x] Open in Visual Studio or VS Code
+- [x] Confirm the application runs with `dotnet run`
+- [x] Browse to `http://localhost:5000` and verify the UI loads
 
 ### 0.2. AWS Credentials for CI/CD
-- [ ] Create an IAM user/role with permissions for:
+- [x] Create an IAM user/role with permissions for:
   - Elastic Beanstalk (full access)
   - S3 (read/write)
   - CloudWatch Logs & Metrics (read/write)
   - CloudWatch X-Ray (optional)
   - IAM (for Terraform-managed roles)
-- [ ] Store credentials in **GitHub Secrets**:
+- [x] Store credentials in **GitHub Secrets**:
   - `AWS_ACCESS_KEY_ID`
   - `AWS_SECRET_ACCESS_KEY`
   - `AWS_REGION=eu-west-1`
 
 ### 0.3. Terraform Backend Setup
-- [ ] Manually create S3 bucket for Terraform state:
+- [x] Manually create S3 bucket for Terraform state:
   ```bash
   aws s3 mb s3://bp-terraform-state-<unique-id> --region eu-west-1
   aws s3api put-bucket-versioning --bucket bp-terraform-state-<unique-id> --versioning-configuration Status=Enabled
   ```
-- [ ] Create DynamoDB table for state locking:
+- [x] Create DynamoDB table for state locking:
   ```bash
   aws dynamodb create-table \
     --table-name bp-terraform-locks \
@@ -74,68 +74,68 @@ The plan consists of **eight clear phases**, each with actionable steps. Followi
   ```
 
 ### 0.4. Cost Management & Cleanup Plan
-- [ ] Review AWS Free Tier limits
-- [ ] Estimate costs:
+- [x] Review AWS Free Tier limits
+- [x] Estimate costs:
   - Elastic Beanstalk (t2.micro): ~$0.02/hour
   - S3 storage: ~$0.023/GB
   - CloudWatch: Free tier covers most usage
-- [ ] Document teardown plan: `./destroy.sh` after submission
-- [ ] Set up AWS Billing Alerts (optional but recommended)
+- [x] Document teardown plan: `./destroy.sh` after submission
+- [x] Set up AWS Billing Alerts (optional but recommended)
 
 ### 0.5. Create Deployment Automation Scripts
-- [ ] Create `deploy.sh` for one-command deployment
-- [ ] Create `destroy.sh` for one-command teardown
-- [ ] Make scripts executable: `chmod +x deploy.sh destroy.sh`
-- [ ] Test scripts in dry-run mode
+- [x] Create `deploy.sh` for one-command deployment
+- [x] Create `destroy.sh` for one-command teardown
+- [x] Make scripts executable: `chmod +x deploy.sh destroy.sh`
+- [x] Test scripts in dry-run mode
 
 ---
 
 ## PHASE 1 — APPLICATION LOGIC & TESTING
 
-### Status: ⬜ Not Started
+### Status: ✅ COMPLETE (November 27, 2025)
 
 ### 1.1. Implement Blood Pressure Classification
-- [ ] Follow the assignment chart:
+- [x] Follow the assignment chart:
   - Systolic: 70–190
   - Diastolic: 40–100
   - Systolic > Diastolic
   - Categories: **Low**, **Ideal**, **Pre-High**, **High**
-- [ ] Update the calculation logic in the application
-- [ ] Bind the category result to the Razor view
-- [ ] Include range validation:
+- [x] Update the calculation logic in the application
+- [x] Bind the category result to the Razor view
+- [x] Include range validation:
   - Reject if systolic ≤ diastolic
   - Reject if values out of range
-- [ ] Add appropriate error handling and user feedback
+- [x] Add appropriate error handling and user feedback
 
 ### 1.2. Unit Testing (≥80% coverage)
-- [ ] Create test project: `dotnet new xunit -n BpCalculator.Tests`
-- [ ] Add tests for each category:
+- [x] Create test project: `dotnet new xunit -n BpCalculator.Tests`
+- [x] Add tests for each category:
   - **Low:** S=90, D=60
   - **Ideal:** S=115, D=75
   - **Pre-High:** S=130, D=85
   - **High:** S=150, D=95
-- [ ] Add boundary value tests:
+- [x] Add boundary value tests:
   - Low/Ideal boundary: S=90, D=60 vs S=91, D=60
   - Ideal/Pre-High boundary: S=120, D=80 vs S=121, D=80
   - Pre-High/High boundary: S=140, D=90 vs S=141, D=90
-- [ ] Add invalid input tests:
+- [x] Add invalid input tests:
   - S=D (equal values)
   - S<D (invalid relationship)
   - Out of range values
-- [ ] Generate coverage report:
+- [x] Generate coverage report:
   ```bash
   dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura
   ```
-- [ ] Verify coverage ≥80%
+- [x] Verify coverage ≥80% (achieved 100% on BloodPressure.cs)
 
 ### 1.3. BDD Testing (SpecFlow)
-- [ ] Add SpecFlow NuGet packages:
+- [x] Add SpecFlow NuGet packages:
   ```bash
   dotnet add package SpecFlow
   dotnet add package SpecFlow.xUnit
   dotnet add package SpecFlow.Tools.MsBuild.Generation
   ```
-- [ ] Create `Features/BloodPressureClassification.feature`:
+- [x] Create `Features/BloodPressureClassification.feature`:
   ```gherkin
   Feature: Blood Pressure Classification
     As a healthcare professional
@@ -166,34 +166,35 @@ The plan consists of **eight clear phases**, each with actionable steps. Followi
     When I calculate the category
     Then the result should be "Low"
   ```
-- [ ] Implement C# step definitions calling your classification logic
-- [ ] Run BDD tests: `dotnet test`
+- [x] Implement C# step definitions calling your classification logic
+- [x] Run BDD tests: `dotnet test`
+- [x] All 55 tests passing (31 unit + 24 BDD)
 
 ---
 
 ## PHASE 2 — TELEMETRY & OBSERVABILITY
 
-### Status: ⬜ Not Started
+### Status: ✅ COMPLETE (November 27, 2025)
 
 ### 2.1. CloudWatch Logging
-- [ ] ASP.NET logs automatically appear in CloudWatch when running on Elastic Beanstalk
-- [ ] Add structured logging to Program.cs:
+- [x] ASP.NET logs automatically appear in CloudWatch when running on Elastic Beanstalk
+- [x] Add structured logging to Program.cs:
   ```csharp
   builder.Logging.AddConsole();
   builder.Logging.AddAWSProvider();
   ```
-- [ ] Add informational logs in calculation logic:
+- [x] Add informational logs in calculation logic:
   ```csharp
   logger.LogInformation("BP calculated: Systolic={systolic}, Diastolic={diastolic}, Category={category}", 
     systolic, diastolic, category);
   ```
-- [ ] Add error logs for validation failures:
+- [x] Add error logs for validation failures:
   ```csharp
   logger.LogWarning("Invalid BP input: Systolic={systolic}, Diastolic={diastolic}", systolic, diastolic);
   ```
 
 ### 2.2. Optional: Custom CloudWatch Metrics
-- [ ] Install AWS SDK: `dotnet add package AWSSDK.CloudWatch`
+- [x] Install AWS SDK: `dotnet add package AWSSDK.CloudWatch`
 - [ ] Push custom metrics:
   - Metric: `BpCalculationCount`
   - Dimension: `Category=High/Ideal/PreHigh/Low`
