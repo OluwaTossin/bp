@@ -371,5 +371,72 @@ namespace BPCalculator.Tests
         }
 
         #endregion
+
+        #region Explanation Tests - NEW FEATURE (Phase 6)
+
+        [Fact]
+        public void GetCategoryExplanation_Low_ReturnsLowExplanation()
+        {
+            // Act
+            var explanation = BloodPressure.GetCategoryExplanation(BPCategory.Low);
+
+            // Assert
+            Assert.NotNull(explanation);
+            Assert.Contains("low", explanation, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("consult", explanation, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public void GetCategoryExplanation_Ideal_ReturnsIdealExplanation()
+        {
+            // Act
+            var explanation = BloodPressure.GetCategoryExplanation(BPCategory.Ideal);
+
+            // Assert
+            Assert.NotNull(explanation);
+            Assert.Contains("ideal", explanation, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("healthy", explanation, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public void GetCategoryExplanation_PreHigh_ReturnsPreHighExplanation()
+        {
+            // Act
+            var explanation = BloodPressure.GetCategoryExplanation(BPCategory.PreHigh);
+
+            // Assert
+            Assert.NotNull(explanation);
+            Assert.Contains("pre-high", explanation, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("lifestyle", explanation, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public void GetCategoryExplanation_High_ReturnsHighExplanation()
+        {
+            // Act
+            var explanation = BloodPressure.GetCategoryExplanation(BPCategory.High);
+
+            // Assert
+            Assert.NotNull(explanation);
+            Assert.Contains("high", explanation, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("consult", explanation, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public void GetCategoryExplanation_AllCategories_ReturnNonEmptyStrings()
+        {
+            // Arrange
+            var categories = new[] { BPCategory.Low, BPCategory.Ideal, BPCategory.PreHigh, BPCategory.High };
+
+            // Act & Assert
+            foreach (var category in categories)
+            {
+                var explanation = BloodPressure.GetCategoryExplanation(category);
+                Assert.False(string.IsNullOrWhiteSpace(explanation), 
+                    $"Explanation for {category} should not be null or empty");
+            }
+        }
+
+        #endregion
     }
 }

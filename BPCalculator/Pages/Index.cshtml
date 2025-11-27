@@ -30,6 +30,12 @@
                 <div class="form-group">
                     @Html.DisplayFor(model => model.BP.Category, new { htmlAttributes = new { @class = "form-control" } })
                 </div>
+                @if (!string.IsNullOrEmpty(Model.CategoryExplanation))
+                {
+                    <div class="alert alert-info mt-3" role="alert">
+                        <strong>What this means:</strong> @Model.CategoryExplanation
+                    </div>
+                }
             }
         </form>
     </div>

@@ -114,3 +114,17 @@ Scenario: Invalid input - systolic less than diastolic
     And diastolic pressure is 90
     When I attempt to calculate the blood pressure category
     Then an error should occur indicating invalid relationship
+
+Scenario: Ideal blood pressure with explanation text
+    Given systolic pressure is 115
+    And diastolic pressure is 75
+    When I calculate the blood pressure category
+    Then the result should be "Ideal"
+    And the explanation should contain "ideal and healthy"
+
+Scenario: High blood pressure with explanation text
+    Given systolic pressure is 150
+    And diastolic pressure is 95
+    When I calculate the blood pressure category
+    Then the result should be "High"
+    And the explanation should contain "consult a healthcare provider"

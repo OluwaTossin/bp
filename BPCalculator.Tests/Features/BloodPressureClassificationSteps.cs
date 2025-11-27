@@ -100,5 +100,12 @@ namespace BPCalculator.Tests.Features
             Assert.Contains("Systolic pressure must be greater than Diastolic pressure",
                 _exception.Message);
         }
+
+        [Then(@"the explanation should contain ""(.*)""")]
+        public void ThenTheExplanationShouldContain(string expectedText)
+        {
+            var explanation = BloodPressure.GetCategoryExplanation(_result);
+            Assert.Contains(expectedText, explanation, StringComparison.OrdinalIgnoreCase);
+        }
     }
 }
