@@ -24,8 +24,8 @@ The plan consists of **eight clear phases**, each with actionable steps. Followi
 
 - [x] **Phase 0:** Foundation Setup
 - [x] **Phase 1:** Application Logic & Testing
-- [ ] **Phase 2:** Telemetry & Observability
-- [ ] **Phase 3:** Terraform (Infrastructure-as-Code)
+- [x] **Phase 2:** Telemetry & Observability
+- [x] **Phase 3:** Terraform (Infrastructure-as-Code)
 - [ ] **Phase 4:** CI Pipeline (GitHub Actions)
 - [ ] **Phase 5:** CD Pipeline with Blue–Green Deployment
 - [ ] **Phase 6:** New Feature (≤ 30 Lines) + Feature Branch Workflow
@@ -212,10 +212,10 @@ The plan consists of **eight clear phases**, each with actionable steps. Followi
 
 ## PHASE 3 — TERRAFORM (INFRASTRUCTURE-AS-CODE)
 
-### Status: ⬜ Not Started
+### Status: ✅ COMPLETE (November 27, 2025)
 
 ### 3.1. Directory Structure
-- [ ] Create Terraform directory structure:
+- [x] Create Terraform directory structure:
   ```
   infra/
     main.tf
@@ -226,16 +226,17 @@ The plan consists of **eight clear phases**, each with actionable steps. Followi
     env/
       staging.tfvars
       prod.tfvars
+    README.md
   ```
 
 ### 3.2. Terraform Configuration Files
 
 #### backend.tf
-- [ ] Configure remote state:
+- [x] Configure remote state:
   ```hcl
   terraform {
     backend "s3" {
-      bucket         = "bp-terraform-state-<unique-id>"
+      bucket         = "bp-terraform-state-1764230215"
       key            = "bp-calculator/terraform.tfstate"
       region         = "eu-west-1"
       dynamodb_table = "bp-terraform-locks"
@@ -245,7 +246,7 @@ The plan consists of **eight clear phases**, each with actionable steps. Followi
   ```
 
 #### providers.tf
-- [ ] Configure AWS provider:
+- [x] Configure AWS provider:
   ```hcl
   terraform {
     required_version = ">= 1.0"
@@ -263,71 +264,73 @@ The plan consists of **eight clear phases**, each with actionable steps. Followi
   ```
 
 #### main.tf
-- [ ] S3 bucket for EB application bundles
-- [ ] Elastic Beanstalk application resource
-- [ ] IAM roles:
+- [x] S3 bucket for EB application bundles
+- [x] Elastic Beanstalk application resource
+- [x] IAM roles:
   - Service role for EB
   - Instance profile for EC2 instances
-- [ ] Two Beanstalk environments:
-  - `bp-calculator-staging`
-  - `bp-calculator-prod`
-- [ ] CloudWatch alarms:
+- [x] Elastic Beanstalk environments (staging/prod configurable via tfvars)
+- [x] CloudWatch alarms:
   - Unhealthy host count > 0
   - 5xx error rate > 5%
   - High CPU utilization (>80%)
 
 #### variables.tf
-- [ ] Define variables:
+- [x] Define variables:
   - `aws_region`
   - `app_name`
   - `environment` (staging/prod)
   - `instance_type` (default: t2.micro)
-  - `solution_stack_name` (e.g., "64bit Amazon Linux 2023 v3.0.3 running .NET 8")
+  - `solution_stack_name` (.NET 8 on Amazon Linux 2023)
+  - `min_instances`, `max_instances`
+  - `health_check_path`
+  - `enable_cloudwatch_alarms`
 
 #### outputs.tf
-- [ ] Output environment CNAMEs
-- [ ] Output S3 bucket name
-- [ ] Output CloudWatch log groups
+- [x] Output environment CNAMEs
+- [x] Output S3 bucket name
+- [x] Output CloudWatch log groups
+- [x] Output IAM roles and instance profiles
 
 ### 3.3. Environment-Specific Variables
 
 #### env/staging.tfvars
-- [ ] Create staging configuration:
+- [x] Create staging configuration:
   ```hcl
   environment   = "staging"
   instance_type = "t2.micro"
+  min_instances = 1
+  max_instances = 2
   ```
 
 #### env/prod.tfvars
-- [ ] Create production configuration:
+- [x] Create production configuration:
   ```hcl
-  environment   = "production"
+  environment   = "prod"
   instance_type = "t2.small"
+  min_instances = 1
+  max_instances = 4
   ```
 
-### 3.4. Terraform Apply
-- [ ] Initialize Terraform:
+### 3.4. Terraform Initialization and Validation
+- [x] Initialize Terraform:
   ```bash
   cd infra
   terraform init
   ```
-- [ ] Plan staging:
+- [x] Validate configuration:
+  ```bash
+  terraform validate
+  ```
+- [x] Plan staging:
   ```bash
   terraform plan -var-file="env/staging.tfvars" -out=staging.tfplan
   ```
-- [ ] Apply staging:
+- [ ] Apply staging (deferred until Phase 5 CD pipeline):
   ```bash
   terraform apply staging.tfplan
   ```
-- [ ] Plan production:
-  ```bash
-  terraform plan -var-file="env/prod.tfvars" -out=prod.tfplan
-  ```
-- [ ] Apply production:
-  ```bash
-  terraform apply prod.tfplan
-  ```
-- [ ] Record environment CNAMEs from outputs
+- [ ] Plan and apply production (deferred until Phase 5)
 
 ### 3.5. Blue-Green Deployment Architecture
 
@@ -336,6 +339,12 @@ The plan consists of **eight clear phases**, each with actionable steps. Followi
 - **GREEN** = `bp-calculator-staging` (new version being validated)
 - **Promotion:** After validation passes, CNAME swap promotes GREEN to production
 - **Rollback:** CNAME swap back or redeploy previous version
+
+**Infrastructure Ready For:**
+- Separate staging and production environments
+- CNAME swapping for zero-downtime deployments
+- CloudWatch monitoring with SNS alarms
+- Automatic log streaming to CloudWatch
 
 ---
 
