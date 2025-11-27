@@ -31,9 +31,34 @@ namespace BPCalculator
         {
             get
             {
-                // implement as part of project
-                //throw new NotImplementedException("not implemented yet");
-                return new BPCategory();                       // replace this
+                // Validation: Systolic must be greater than Diastolic
+                if (Systolic <= Diastolic)
+                {
+                    throw new ArgumentException("Systolic pressure must be greater than Diastolic pressure");
+                }
+
+                // Classification based on assignment chart
+                // Low: Systolic < 90 OR Diastolic < 60
+                if (Systolic < 90 || Diastolic < 60)
+                {
+                    return BPCategory.Low;
+                }
+                
+                // Ideal: Systolic 90-120 AND Diastolic 60-80
+                if (Systolic >= 90 && Systolic <= 120 && Diastolic >= 60 && Diastolic <= 80)
+                {
+                    return BPCategory.Ideal;
+                }
+                
+                // High: Systolic > 140 OR Diastolic > 90 (check this BEFORE Pre-High)
+                if (Systolic > 140 || Diastolic > 90)
+                {
+                    return BPCategory.High;
+                }
+                
+                // Pre-High: Systolic 121-140 OR Diastolic 81-90
+                // This catches everything between Ideal and High
+                return BPCategory.PreHigh;
             }
         }
     }
