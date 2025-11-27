@@ -1,5 +1,5 @@
-environment   = "staging"
-instance_type = "t2.micro"
+environment = "staging"
+instance_type = "t3.micro"
 min_instances = 1
 max_instances = 2
 
