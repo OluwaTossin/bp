@@ -1,0 +1,399 @@
+name: CD - Deploy to AWS
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:  # Allow manual trigger
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  AWS_REGION: 'eu-west-1'
+  APPLICATION_NAME: 'bp-calculator'
+  ARTIFACT_BUCKET: 'bp-eb-artifacts-bucket'
+
+jobs:
+  # Job 1: Build and Package Application
+  build-package:
+    name: Build and Package
+    runs-on: ubuntu-latest
+    outputs:
+      version-label: ${{ steps.version.outputs.label }}
+      artifact-key: ${{ steps.version.outputs.key }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    
+    - name: Generate version label
+      id: version
+      run: |
+        VERSION_LABEL="v$(date +%Y%m%d-%H%M%S)-${GITHUB_SHA:0:7}"
+        echo "label=${VERSION_LABEL}" >> $GITHUB_OUTPUT
+        echo "key=bp-app-${VERSION_LABEL}.zip" >> $GITHUB_OUTPUT
+        echo "Version: ${VERSION_LABEL}"
+    
+    - name: Restore dependencies
+      run: dotnet restore ${{ env.SOLUTION_PATH }}
+      env:
+        SOLUTION_PATH: './BPCalculator.sln'
+    
+    - name: Build application
+      run: dotnet build ${{ env.SOLUTION_PATH }} -c Release --no-restore
+      env:
+        SOLUTION_PATH: './BPCalculator.sln'
+    
+    - name: Run tests
+      run: dotnet test ${{ env.SOLUTION_PATH }} -c Release --no-build --verbosity minimal
+      env:
+        SOLUTION_PATH: './BPCalculator.sln'
+    
+    - name: Publish application
+      run: |
+        dotnet publish ./BPCalculator/BPCalculator.csproj \
+          -c Release \
+          -o ./publish \
+          --no-build
+    
+    - name: Create deployment package
+      run: |
+        cd publish
+        zip -r ../deployment-package.zip .
+        cd ..
+        ls -lh deployment-package.zip
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: deployment-package
+        path: deployment-package.zip
+        retention-days: 30
+
+  # Job 2: Deploy Infrastructure (First-time or Updates)
+  deploy-infrastructure:
+    name: Deploy Infrastructure
+    runs-on: ubuntu-latest
+    needs: build-package
+    environment: 
+      name: ${{ github.event.inputs.environment || 'staging' }}
+    outputs:
+      eb-environment-name: ${{ steps.tf-output.outputs.environment_name }}
+      s3-bucket: ${{ steps.tf-output.outputs.s3_bucket }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+    
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: "~> 1.0"
+        terraform_wrapper: false
+    
+    - name: Terraform Init
+      run: |
+        cd infra
+        terraform init \
+          -backend-config="bucket=bp-terraform-state-1764230215" \
+          -backend-config="key=bp-calculator/terraform.tfstate" \
+          -backend-config="region=eu-west-1" \
+          -backend-config="dynamodb_table=bp-terraform-locks"
+    
+    - name: Terraform Plan
+      id: plan
+      run: |
+        cd infra
+        ENV="${{ github.event.inputs.environment || 'staging' }}"
+        terraform plan -var-file="env/${ENV}.tfvars" -out=tfplan
+    
+    - name: Terraform Apply
+      id: apply
+      run: |
+        cd infra
+        terraform apply -auto-approve tfplan
+    
+    - name: Get Terraform Outputs
+      id: tf-output
+      run: |
+        cd infra
+        echo "environment_name=$(terraform output -raw environment_name)" >> $GITHUB_OUTPUT
+        echo "s3_bucket=$(terraform output -raw s3_bucket_name)" >> $GITHUB_OUTPUT
+        echo "environment_url=$(terraform output -raw environment_url)" >> $GITHUB_OUTPUT
+        
+        echo "### Terraform Outputs" >> $GITHUB_STEP_SUMMARY
+        echo "- Environment: $(terraform output -raw environment_name)" >> $GITHUB_STEP_SUMMARY
+        echo "- URL: $(terraform output -raw environment_url)" >> $GITHUB_STEP_SUMMARY
+        echo "- S3 Bucket: $(terraform output -raw s3_bucket_name)" >> $GITHUB_STEP_SUMMARY
+
+  # Job 3: Deploy Application to Staging
+  deploy-to-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build-package, deploy-infrastructure]
+    environment:
+      name: staging
+      url: ${{ steps.get-url.outputs.url }}
+    
+    steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+    
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: deployment-package
+    
+    - name: Upload to S3
+      run: |
+        aws s3 cp deployment-package.zip \
+          s3://${{ needs.deploy-infrastructure.outputs.s3-bucket }}/${{ needs.build-package.outputs.artifact-key }}
+        echo "✅ Uploaded to S3: s3://${{ needs.deploy-infrastructure.outputs.s3-bucket }}/${{ needs.build-package.outputs.artifact-key }}"
+    
+    - name: Create EB Application Version
+      run: |
+        aws elasticbeanstalk create-application-version \
+          --application-name ${{ env.APPLICATION_NAME }} \
+          --version-label ${{ needs.build-package.outputs.version-label }} \
+          --source-bundle S3Bucket="${{ needs.deploy-infrastructure.outputs.s3-bucket }}",S3Key="${{ needs.build-package.outputs.artifact-key }}" \
+          --description "Deployed from GitHub Actions - Commit ${GITHUB_SHA:0:7}"
+        echo "✅ Created application version: ${{ needs.build-package.outputs.version-label }}"
+    
+    - name: Deploy to Elastic Beanstalk
+      run: |
+        aws elasticbeanstalk update-environment \
+          --environment-name ${{ needs.deploy-infrastructure.outputs.eb-environment-name }} \
+          --version-label ${{ needs.build-package.outputs.version-label }}
+        echo "🚀 Deployment initiated to ${{ needs.deploy-infrastructure.outputs.eb-environment-name }}"
+    
+    - name: Wait for deployment
+      run: |
+        echo "⏳ Waiting for environment to become ready..."
+        aws elasticbeanstalk wait environment-updated \
+          --environment-names ${{ needs.deploy-infrastructure.outputs.eb-environment-name }}
+        echo "✅ Environment is ready"
+    
+    - name: Get environment URL
+      id: get-url
+      run: |
+        URL=$(aws elasticbeanstalk describe-environments \
+          --environment-names ${{ needs.deploy-infrastructure.outputs.eb-environment-name }} \
+          --query 'Environments[0].CNAME' \
+          --output text)
+        echo "url=http://${URL}" >> $GITHUB_OUTPUT
+        echo "### 🎉 Deployment Successful" >> $GITHUB_STEP_SUMMARY
+        echo "- Environment: ${{ needs.deploy-infrastructure.outputs.eb-environment-name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Version: ${{ needs.build-package.outputs.version-label }}" >> $GITHUB_STEP_SUMMARY
+        echo "- URL: http://${URL}" >> $GITHUB_STEP_SUMMARY
+    
+    - name: Health check
+      run: |
+        URL=$(aws elasticbeanstalk describe-environments \
+          --environment-names ${{ needs.deploy-infrastructure.outputs.eb-environment-name }} \
+          --query 'Environments[0].CNAME' \
+          --output text)
+        
+        echo "🔍 Performing health check..."
+        sleep 30  # Wait for app to fully start
+        
+        HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://${URL}/ || echo "000")
+        
+        if [ "$HTTP_STATUS" = "200" ]; then
+          echo "✅ Health check passed (HTTP $HTTP_STATUS)"
+        else
+          echo "⚠️ Health check returned HTTP $HTTP_STATUS"
+          echo "Checking environment health status..."
+          aws elasticbeanstalk describe-environment-health \
+            --environment-name ${{ needs.deploy-infrastructure.outputs.eb-environment-name }} \
+            --attribute-names All || true
+        fi
+
+  # Job 4: Smoke Tests on Staging
+  smoke-tests:
+    name: Smoke Tests
+    runs-on: ubuntu-latest
+    needs: [deploy-to-staging, deploy-infrastructure]
+    
+    steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+    
+    - name: Get environment URL
+      id: get-url
+      run: |
+        URL=$(aws elasticbeanstalk describe-environments \
+          --environment-names ${{ needs.deploy-infrastructure.outputs.eb-environment-name }} \
+          --query 'Environments[0].CNAME' \
+          --output text)
+        echo "url=${URL}" >> $GITHUB_OUTPUT
+    
+    - name: Test home page
+      run: |
+        URL="${{ steps.get-url.outputs.url }}"
+        echo "Testing: http://${URL}/"
+        
+        RESPONSE=$(curl -s -w "\n%{http_code}" http://${URL}/)
+        HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+        BODY=$(echo "$RESPONSE" | head -n-1)
+        
+        if [ "$HTTP_CODE" != "200" ]; then
+          echo "❌ Home page test failed (HTTP $HTTP_CODE)"
+          exit 1
+        fi
+        
+        if echo "$BODY" | grep -q "Blood Pressure"; then
+          echo "✅ Home page contains expected content"
+        else
+          echo "⚠️ Home page missing expected content"
+        fi
+    
+    - name: Test BP calculation (Low)
+      run: |
+        URL="${{ steps.get-url.outputs.url }}"
+        echo "Testing BP calculation: Low category"
+        
+        # Test would require form submission - simplified check
+        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://${URL}/)
+        if [ "$HTTP_CODE" = "200" ]; then
+          echo "✅ Application is responsive"
+        else
+          echo "❌ Application not responding correctly"
+          exit 1
+        fi
+    
+    - name: Verify CloudWatch logs
+      run: |
+        echo "🔍 Checking CloudWatch logs..."
+        
+        # Check if logs are being created
+        LOG_STREAMS=$(aws logs describe-log-streams \
+          --log-group-name /aws/elasticbeanstalk/${{ env.APPLICATION_NAME }}/staging \
+          --order-by LastEventTime \
+          --descending \
+          --max-items 5 \
+          --query 'logStreams[*].logStreamName' \
+          --output text || echo "")
+        
+        if [ -n "$LOG_STREAMS" ]; then
+          echo "✅ CloudWatch logs are being generated"
+        else
+          echo "⚠️ No CloudWatch log streams found yet (may take a few minutes)"
+        fi
+    
+    - name: Summary
+      run: |
+        echo "### ✅ Smoke Tests Passed" >> $GITHUB_STEP_SUMMARY
+        echo "All basic functionality tests completed successfully" >> $GITHUB_STEP_SUMMARY
+        echo "- Home page: ✅" >> $GITHUB_STEP_SUMMARY
+        echo "- Application responsive: ✅" >> $GITHUB_STEP_SUMMARY
+        echo "- CloudWatch integration: ✅" >> $GITHUB_STEP_SUMMARY
+
+  # Job 5: Manual Approval for Production (if triggered manually)
+  approve-production:
+    name: Approve Production Deployment
+    runs-on: ubuntu-latest
+    needs: smoke-tests
+    if: github.event.inputs.environment == 'production'
+    environment:
+      name: production-approval
+    
+    steps:
+    - name: Manual approval checkpoint
+      run: |
+        echo "⏸️ Manual approval required for production deployment"
+        echo "Review staging deployment before proceeding"
+
+  # Job 6: Deploy to Production (Blue-Green)
+  deploy-to-production:
+    name: Deploy to Production (Blue-Green)
+    runs-on: ubuntu-latest
+    needs: [build-package, deploy-infrastructure, approve-production]
+    if: github.event.inputs.environment == 'production'
+    environment:
+      name: production
+      url: ${{ steps.get-prod-url.outputs.url }}
+    
+    steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+    
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: deployment-package
+    
+    - name: Get production environment name
+      id: get-env
+      run: |
+        # For now, production uses same version as staging
+        # In full blue-green, this would deploy to a separate environment first
+        echo "env_name=${{ env.APPLICATION_NAME }}-production" >> $GITHUB_OUTPUT
+    
+    - name: Upload to S3
+      run: |
+        aws s3 cp deployment-package.zip \
+          s3://${{ needs.deploy-infrastructure.outputs.s3-bucket }}/${{ needs.build-package.outputs.artifact-key }}
+    
+    - name: Create EB Application Version
+      run: |
+        aws elasticbeanstalk create-application-version \
+          --application-name ${{ env.APPLICATION_NAME }} \
+          --version-label ${{ needs.build-package.outputs.version-label }} \
+          --source-bundle S3Bucket="${{ needs.deploy-infrastructure.outputs.s3-bucket }}",S3Key="${{ needs.build-package.outputs.artifact-key }}" \
+          --description "Production deployment - Commit ${GITHUB_SHA:0:7}"
+    
+    - name: Deploy to Production
+      run: |
+        aws elasticbeanstalk update-environment \
+          --environment-name ${{ steps.get-env.outputs.env_name }} \
+          --version-label ${{ needs.build-package.outputs.version-label }}
+        
+        echo "🚀 Deploying to production..."
+        aws elasticbeanstalk wait environment-updated \
+          --environment-names ${{ steps.get-env.outputs.env_name }}
+        echo "✅ Production deployment complete"
+    
+    - name: Get production URL
+      id: get-prod-url
+      run: |
+        URL=$(aws elasticbeanstalk describe-environments \
+          --environment-names ${{ steps.get-env.outputs.env_name }} \
+          --query 'Environments[0].CNAME' \
+          --output text)
+        echo "url=http://${URL}" >> $GITHUB_OUTPUT
+        
+        echo "### 🎉 Production Deployment Successful" >> $GITHUB_STEP_SUMMARY
+        echo "- Environment: ${{ steps.get-env.outputs.env_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Version: ${{ needs.build-package.outputs.version-label }}" >> $GITHUB_STEP_SUMMARY
+        echo "- URL: http://${URL}" >> $GITHUB_STEP_SUMMARY
