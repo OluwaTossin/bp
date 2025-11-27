@@ -432,7 +432,8 @@ namespace BPCalculator.Tests
             foreach (var category in categories)
             {
                 var explanation = BloodPressure.GetCategoryExplanation(category);
-                Assert.False(string.IsNullOrWhiteSpace(explanation), 
+                Assert.False(
+                    string.IsNullOrWhiteSpace(explanation),
                     $"Explanation for {category} should not be null or empty");
             }
         }
