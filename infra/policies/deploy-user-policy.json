@@ -1,0 +1,110 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "TerraformStateLocking",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:PutItem",
+        "dynamodb:GetItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable"
+      ],
+      "Resource": "arn:aws:dynamodb:eu-west-1:455921291596:table/bp-terraform-locks"
+    },
+    {
+      "Sid": "TerraformStateStorage",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket",
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::bp-terraform-state-1764230215",
+        "arn:aws:s3:::bp-terraform-state-1764230215/*"
+      ]
+    },
+    {
+      "Sid": "ElasticBeanstalkManagement",
+      "Effect": "Allow",
+      "Action": [
+        "elasticbeanstalk:*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "EC2Management",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeAccountAttributes",
+        "ec2:DescribeAvailabilityZones",
+        "ec2:DescribeImages",
+        "ec2:DescribeInstances",
+        "ec2:DescribeInstanceStatus",
+        "ec2:DescribeKeyPairs",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeVpcs",
+        "ec2:DescribeInstanceAttribute",
+        "ec2:DescribeRouteTables",
+        "ec2:DescribeAddresses",
+        "autoscaling:DescribeAutoScalingGroups",
+        "autoscaling:DescribeLaunchConfigurations",
+        "autoscaling:DescribeScalingActivities"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "IAMManagement",
+      "Effect": "Allow",
+      "Action": [
+        "iam:GetRole",
+        "iam:GetRolePolicy",
+        "iam:ListRolePolicies",
+        "iam:ListAttachedRolePolicies",
+        "iam:ListInstanceProfiles",
+        "iam:ListInstanceProfilesForRole",
+        "iam:PassRole"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "CloudWatchManagement",
+      "Effect": "Allow",
+      "Action": [
+        "cloudwatch:*",
+        "logs:*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "SNSManagement",
+      "Effect": "Allow",
+      "Action": [
+        "sns:*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "S3ArtifactBucketManagement",
+      "Effect": "Allow",
+      "Action": [
+        "s3:*"
+      ],
+      "Resource": [
+        "arn:aws:s3:::bp-calculator-eb-artifacts-*",
+        "arn:aws:s3:::bp-calculator-eb-artifacts-*/*"
+      ]
+    },
+    {
+      "Sid": "ElasticLoadBalancingManagement",
+      "Effect": "Allow",
+      "Action": [
+        "elasticloadbalancing:Describe*"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

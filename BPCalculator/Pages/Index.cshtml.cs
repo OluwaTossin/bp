@@ -20,6 +20,20 @@ namespace BPCalculator.Pages
         [BindProperty]                              // bound on POST
         public BloodPressure BP { get; set; }
 
+        // Explanation text for the current BP category (NEW FEATURE - Phase 6)
+        public string CategoryExplanation
+        {
+            get
+            {
+                if (BP != null && ModelState.IsValid && BP.Systolic > BP.Diastolic)
+                {
+                    try { return BloodPressure.GetCategoryExplanation(BP.Category); }
+                    catch { return ""; }
+                }
+                return "";
+            }
+        }
+
         // setup initial data
         public void OnGet()
         {

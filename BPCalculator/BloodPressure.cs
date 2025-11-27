@@ -83,5 +83,18 @@ namespace BPCalculator
                 return result;
             }
         }
+
+        // Get explanation text for BP category (NEW FEATURE - Phase 6)
+        public static string GetCategoryExplanation(BPCategory category)
+        {
+            return category switch
+            {
+                BPCategory.Low => "Your blood pressure is low. If you experience dizziness, weakness, or fatigue, consult a healthcare provider.",
+                BPCategory.Ideal => "Your blood pressure is ideal and healthy. Maintain your lifestyle with regular exercise and a balanced diet.",
+                BPCategory.PreHigh => "Your blood pressure is pre-high (prehypertension). Consider lifestyle changes: reduce salt, exercise regularly, manage stress.",
+                BPCategory.High => "Your blood pressure is high. Consult a healthcare provider for evaluation and treatment. Monitor regularly.",
+                _ => "Unable to determine category. Please ensure valid input values."
+            };
+        }
     }
 }

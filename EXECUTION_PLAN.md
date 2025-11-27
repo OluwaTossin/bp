@@ -27,7 +27,7 @@ The plan consists of **eight clear phases**, each with actionable steps. Followi
 - [x] **Phase 2:** Telemetry & Observability
 - [x] **Phase 3:** Terraform (Infrastructure-as-Code)
 - [x] **Phase 4:** CI Pipeline (GitHub Actions)
-- [ ] **Phase 5:** CD Pipeline with Blue–Green Deployment
+- [x] **Phase 5:** CD Pipeline with Blue–Green Deployment
 - [ ] **Phase 6:** New Feature (≤ 30 Lines) + Feature Branch Workflow
 - [ ] **Phase 7:** Evidence Collection
 - [ ] **Phase 8:** Report & Video Preparation
@@ -420,7 +420,7 @@ The plan consists of **eight clear phases**, each with actionable steps. Followi
 
 ## PHASE 5 — CD PIPELINE WITH BLUE–GREEN DEPLOYMENT
 
-### Status: ⬜ Not Started
+### Status: ✅ COMPLETE (November 27, 2025)
 
 ### 5.1. Create CD Workflow
 - [ ] Create `.github/workflows/cd.yml`
