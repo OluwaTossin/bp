@@ -97,7 +97,7 @@ namespace BPCalculator.Tests.Features
         {
             Assert.NotNull(_exception);
             Assert.IsType<ArgumentException>(_exception);
-            Assert.Contains("Systolic pressure must be greater than Diastolic pressure", 
+            Assert.Contains("Systolic pressure must be greater than Diastolic pressure",
                 _exception.Message);
         }
     }

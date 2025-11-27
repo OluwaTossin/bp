@@ -8,10 +8,10 @@ namespace BPCalculator
     // BP categories
     public enum BPCategory
     {
-        [Display(Name="Low Blood Pressure")] Low,
-        [Display(Name="Ideal Blood Pressure")]  Ideal,
-        [Display(Name="Pre-High Blood Pressure")] PreHigh,
-        [Display(Name ="High Blood Pressure")]  High
+        [Display(Name = "Low Blood Pressure")] Low,
+        [Display(Name = "Ideal Blood Pressure")] Ideal,
+        [Display(Name = "Pre-High Blood Pressure")] PreHigh,
+        [Display(Name = "High Blood Pressure")] High
     };
 
     public class BloodPressure
@@ -20,7 +20,7 @@ namespace BPCalculator
         public const int SystolicMax = 190;
         public const int DiastolicMin = 40;
         public const int DiastolicMax = 100;
-        
+
         // Logger for telemetry (will be injected where needed)
         private static ILogger _logger;
 
@@ -35,7 +35,7 @@ namespace BPCalculator
         {
             _logger = logger;
         }
-        
+
         // calculate BP category
         public BPCategory Category
         {
@@ -51,7 +51,7 @@ namespace BPCalculator
                 }
 
                 BPCategory result;
-                
+
                 // Classification based on assignment chart
                 // Low: Systolic < 90 OR Diastolic < 60
                 if (Systolic < 90 || Diastolic < 60)
@@ -74,12 +74,12 @@ namespace BPCalculator
                 {
                     result = BPCategory.PreHigh;
                 }
-                
+
                 // Log BP calculation with structured data
                 _logger?.LogInformation(
                     "BP calculation: Systolic={Systolic}, Diastolic={Diastolic}, Category={Category}",
                     Systolic, Diastolic, result.ToString());
-                
+
                 return result;
             }
         }

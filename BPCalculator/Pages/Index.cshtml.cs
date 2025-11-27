@@ -10,7 +10,7 @@ namespace BPCalculator.Pages
     public class BloodPressureModel : PageModel
     {
         private readonly ILogger<BloodPressureModel> _logger;
-        
+
         public BloodPressureModel(ILogger<BloodPressureModel> logger)
         {
             _logger = logger;
@@ -33,7 +33,7 @@ namespace BPCalculator.Pages
             _logger.LogInformation(
                 "BP calculation requested: Systolic={Systolic}, Diastolic={Diastolic}",
                 BP.Systolic, BP.Diastolic);
-            
+
             // extra validation
             if (!(BP.Systolic > BP.Diastolic))
             {
@@ -54,12 +54,12 @@ namespace BPCalculator.Pages
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, 
+                    _logger.LogError(ex,
                         "BP calculation error: Systolic={Systolic}, Diastolic={Diastolic}",
                         BP.Systolic, BP.Diastolic);
                 }
             }
-            
+
             return Page();
         }
     }

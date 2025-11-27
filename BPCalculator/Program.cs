@@ -16,10 +16,10 @@ namespace BPCalculator
         public static void Main(string[] args)
         {
             var host = CreateHostBuilder(args).Build();
-            
+
             var logger = host.Services.GetService(typeof(ILogger<Program>)) as ILogger<Program>;
             logger?.LogInformation("Blood Pressure Calculator application starting up");
-            
+
             host.Run();
         }
 
@@ -37,14 +37,14 @@ namespace BPCalculator
                         // 2. EC2 instance profile (when deployed to AWS)
                         // 3. ~/.aws/credentials (local development)
                     };
-                    
+
                     // Add CloudWatch logging (will be disabled if no AWS credentials available)
                     logging.AddAWSProvider(logConfig);
-                    
+
                     // Keep console logging for local development
                     logging.AddConsole();
                     logging.AddDebug();
-                    
+
                     // Set minimum log level
                     logging.SetMinimumLevel(LogLevel.Information);
                 })
