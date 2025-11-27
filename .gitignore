@@ -295,6 +295,9 @@ terraform.rc
 *.tfplan
 *.tfplan.*
 
+# Terraform backend config
+.terraform-backend-config
+
 ###############################################################################
 # AWS / Elastic Beanstalk
 ###############################################################################
