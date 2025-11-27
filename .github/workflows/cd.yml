@@ -17,8 +17,11 @@ on:
 env:
   DOTNET_VERSION: '8.0.x'
   AWS_REGION: 'eu-west-1'
-  APPLICATION_NAME: 'bp-calculator'
-  ARTIFACT_BUCKET: 'bp-eb-artifacts-bucket'
+  APPLICATION_NAME: 'bp-calculator-staging'
+  ENVIRONMENT_NAME: 'bp-calculator-staging'
+  ARTIFACT_BUCKET: 'bp-calculator-eb-artifacts-staging'
+  SOLUTION_PATH: './BPCalculator.sln'
+  PROJECT_PATH: './BPCalculator/BPCalculator.csproj'
 
 jobs:
   # Job 1: Build and Package Application
