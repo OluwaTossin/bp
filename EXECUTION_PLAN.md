@@ -28,7 +28,7 @@ The plan consists of **eight clear phases**, each with actionable steps. Followi
 - [x] **Phase 3:** Terraform (Infrastructure-as-Code)
 - [x] **Phase 4:** CI Pipeline (GitHub Actions)
 - [x] **Phase 5:** CD Pipeline with Blue–Green Deployment
-- [ ] **Phase 6:** New Feature (≤ 30 Lines) + Feature Branch Workflow
+- [x] **Phase 6:** New Feature (≤ 30 Lines) + Feature Branch Workflow
 - [ ] **Phase 7:** Evidence Collection
 - [ ] **Phase 8:** Report & Video Preparation
 
@@ -578,7 +578,7 @@ The plan consists of **eight clear phases**, each with actionable steps. Followi
 
 ## PHASE 6 — NEW FEATURE (≤ 30 LINES) + FEATURE BRANCH WORKFLOW
 
-### Status: ⬜ Not Started
+### Status: ✅ COMPLETE (November 27, 2025)
 
 ### 6.1. User Story: Category Explanation Text
 
@@ -597,7 +597,7 @@ SO THAT I understand what my reading means and what action to take
 
 ### 6.2. Implementation (≤30 lines)
 
-- [ ] Create feature branch:
+- [x] Create feature branch:
   ```bash
   git checkout -b feature/category-explanation
   ```
@@ -626,20 +626,20 @@ SO THAT I understand what my reading means and what action to take
   }
   ```
 
-- [ ] Update Razor page to display explanation
-- [ ] Add CSS styling for explanation text
+- [x] Update Razor page to display explanation
+- [x] Add CSS styling for explanation text
 
 ### 6.3. Tests for New Feature
 
 #### Unit Tests
-- [ ] Test explanation for Low category
-- [ ] Test explanation for Ideal category
-- [ ] Test explanation for Pre-High category
-- [ ] Test explanation for High category
-- [ ] Test explanation is not null/empty
+- [x] Test explanation for Low category
+- [x] Test explanation for Ideal category
+- [x] Test explanation for Pre-High category
+- [x] Test explanation for High category
+- [x] Test explanation is not null/empty
 
 #### BDD Test
-- [ ] Add scenario to `.feature` file:
+- [x] Add scenario to `.feature` file:
   ```gherkin
   Scenario: Display explanation for Ideal blood pressure
     Given systolic pressure is 115
@@ -648,27 +648,27 @@ SO THAT I understand what my reading means and what action to take
     Then the result should be "Ideal"
     And the explanation should contain "ideal and healthy"
   ```
-- [ ] Implement step definition
+- [x] Implement step definition
 
 ### 6.4. Git Feature Branch Workflow
-- [ ] Create feature branch: `git checkout -b feature/category-explanation`
-- [ ] Implement feature with tests
-- [ ] Commit changes:
+- [x] Create feature branch: `git checkout -b feature/category-explanation`
+- [x] Implement feature with tests
+- [x] Commit changes:
   ```bash
   git add .
   git commit -m "feat: Add BP category explanation text"
   ```
-- [ ] Push to remote:
+- [x] Push to remote:
   ```bash
   git push origin feature/category-explanation
   ```
-- [ ] Open Pull Request to `main`
-- [ ] CI pipeline runs automatically
-- [ ] Wait for tests to pass
-- [ ] Request code review (if applicable)
-- [ ] Merge PR after approval
-- [ ] Delete feature branch
-- [ ] CD pipeline deploys to staging → production
+- [x] Open Pull Request to `main`
+- [x] CI pipeline runs automatically
+- [x] Wait for tests to pass
+- [x] Request code review (if applicable)
+- [x] Merge PR after approval
+- [x] Delete feature branch
+- [x] CD pipeline deploys to staging → production
 
 ---
 
