@@ -14,9 +14,14 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Load environment configuration if exists
+if [ -f ".env" ]; then
+    source .env
+fi
+
 # Configuration
-APP_NAME="bp-calculator"
-REGION="eu-west-1"
+APP_NAME="${APP_NAME:-bp-calculator}"
+REGION="${AWS_REGION:-eu-west-1}"
 ENVIRONMENT=${1:-staging}
 
 ###############################################################################
@@ -46,21 +51,58 @@ check_prerequisites() {
     
     # Check for required tools
     local tools=("dotnet" "aws" "terraform" "zip")
+    local missing_tools=()
+    
     for tool in "${tools[@]}"; do
         if command -v $tool &> /dev/null; then
             print_success "$tool is installed"
         else
             print_error "$tool is not installed"
-            exit 1
+            missing_tools+=("$tool")
         fi
     done
+    
+    if [ ${#missing_tools[@]} -gt 0 ]; then
+        print_error "Missing required tools: ${missing_tools[*]}"
+        exit 1
+    fi
     
     # Check AWS credentials
     if aws sts get-caller-identity &> /dev/null; then
         print_success "AWS credentials configured"
     else
         print_error "AWS credentials not configured"
+        echo ""
+        print_info "Run: aws configure"
         exit 1
+    fi
+    
+    # Check if bootstrap is needed
+    if [ ! -f "infra/backend-config.tfvars" ] || [ ! -f ".env" ]; then
+        print_info "First-time setup detected"
+        echo ""
+        read -p "Run bootstrap script to set up AWS backend? (yes/no): " run_bootstrap
+        
+        if [ "$run_bootstrap" = "yes" ]; then
+            if [ -f "bootstrap.sh" ]; then
+                print_info "Running bootstrap..."
+                bash bootstrap.sh
+                echo ""
+                print_success "Bootstrap complete. Continuing with deployment..."
+                echo ""
+                # Reload environment
+                if [ -f ".env" ]; then
+                    source .env
+                fi
+            else
+                print_error "bootstrap.sh not found"
+                exit 1
+            fi
+        else
+            print_error "Bootstrap required for first deployment"
+            print_info "Run: ./bootstrap.sh"
+            exit 1
+        fi
     fi
     
     echo ""
@@ -104,7 +146,12 @@ deploy_infrastructure() {
     # Initialize Terraform if needed
     if [ ! -d ".terraform" ]; then
         print_info "Initializing Terraform..."
-        terraform init
+        if [ -f "backend-config.tfvars" ]; then
+            terraform init -backend-config=backend-config.tfvars
+        else
+            print_error "backend-config.tfvars not found. Run bootstrap.sh first."
+            exit 1
+        fi
     fi
     
     # Plan infrastructure
@@ -129,12 +176,31 @@ deploy_application() {
     print_header "Deploying Application: $env"
     
     local version=$(git rev-parse --short HEAD)
+    
+    # Get bucket name from Terraform outputs
+    if [ ! -f "outputs/${env}-outputs.json" ]; then
+        print_error "Terraform outputs not found. Deploy infrastructure first."
+        exit 1
+    fi
+    
     local bucket_name=$(cat outputs/${env}-outputs.json | jq -r '.app_bucket_name.value')
+    if [ -z "$bucket_name" ] || [ "$bucket_name" = "null" ]; then
+        print_error "Could not get bucket name from Terraform outputs"
+        exit 1
+    fi
+    
     local env_name="${APP_NAME}-${env}"
+    
+    # Check if deployment package exists
+    if [ ! -f "bp-app-${version}.zip" ]; then
+        print_error "Deployment package not found: bp-app-${version}.zip"
+        print_info "Run build_application first"
+        exit 1
+    fi
     
     # Upload to S3
     print_info "Uploading application to S3..."
-    aws s3 cp "bp-app-${version}.zip" "s3://${bucket_name}/bp-app-${version}.zip"
+    aws s3 cp "bp-app-${version}.zip" "s3://${bucket_name}/bp-app-${version}.zip" --region "$REGION"
     
     # Create application version
     print_info "Creating Elastic Beanstalk application version..."

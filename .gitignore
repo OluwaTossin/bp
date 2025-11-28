@@ -48,6 +48,28 @@ artifacts/
 
 *_i.c
 *_p.c
+
+###############################################################################
+# Deployment & Environment
+###############################################################################
+
+# Environment configuration (contains secrets!)
+.env
+.env.*
+!.env.example
+
+# Deployment packages
+*.zip
+publish/
+outputs/
+backups/
+
+# Terraform
+*.tfstate
+*.tfstate.*
+*.tfplan
+.terraform/
+.terraform.lock.hcl
 *_i.h
 *.ilk
 *.meta
@@ -353,11 +375,6 @@ zap-report.html
 ###############################################################################
 # Environment & Secrets
 ###############################################################################
-
-# Environment files
-.env
-.env.*
-*.env
 
 # Secrets
 secrets.json

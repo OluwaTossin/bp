@@ -7,6 +7,11 @@
 
 set -e  # Exit on error
 
+# Load environment configuration if exists
+if [ -f ".env" ]; then
+    source .env
+fi
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -15,8 +20,8 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-APP_NAME="bp-calculator"
-REGION="eu-west-1"
+APP_NAME="${APP_NAME:-bp-calculator}"
+REGION="${AWS_REGION:-eu-west-1}"
 ENVIRONMENT=${1:-staging}
 AUTO_APPROVE=false
 
@@ -248,14 +253,50 @@ destroy_terraform_backend() {
         fi
     fi
     
-    # Get backend configuration (you should update these values)
-    local state_bucket="bp-terraform-state-<unique-id>"
-    local lock_table="bp-terraform-locks"
+    # Get backend configuration from .env or backend-config.tfvars
+    local state_bucket="${TF_STATE_BUCKET}"
+    local lock_table="${TF_STATE_TABLE}"
     
-    print_info "This requires manual configuration. Please update the script with your actual bucket name."
-    print_info "To delete manually:"
-    echo "  aws s3 rb s3://${state_bucket} --force"
-    echo "  aws dynamodb delete-table --table-name ${lock_table}"
+    if [ -z "$state_bucket" ] && [ -f "infra/backend-config.tfvars" ]; then
+        print_info "Reading backend configuration from backend-config.tfvars"
+        state_bucket=$(grep '^bucket' infra/backend-config.tfvars | cut -d'=' -f2 | tr -d ' "')
+        lock_table=$(grep '^dynamodb_table' infra/backend-config.tfvars | cut -d'=' -f2 | tr -d ' "')
+    fi
+    
+    if [ -z "$state_bucket" ] || [ -z "$lock_table" ]; then
+        print_error "Could not determine backend configuration"
+        print_info "Manually delete these resources:"
+        echo "  - S3 bucket: ${APP_NAME}-tfstate-*"
+        echo "  - DynamoDB table: ${APP_NAME}-locks"
+        return
+    fi
+    
+    print_info "Deleting S3 bucket: $state_bucket"
+    if aws s3 ls "s3://${state_bucket}" &>/dev/null; then
+        aws s3 rb "s3://${state_bucket}" --force --region "$REGION" || print_warning "Failed to delete S3 bucket"
+        print_success "S3 bucket deleted"
+    else
+        print_info "S3 bucket does not exist: $state_bucket"
+    fi
+    
+    print_info "Deleting DynamoDB table: $lock_table"
+    if aws dynamodb describe-table --table-name "$lock_table" --region "$REGION" &>/dev/null; then
+        aws dynamodb delete-table --table-name "$lock_table" --region "$REGION" || print_warning "Failed to delete DynamoDB table"
+        print_success "DynamoDB table deleted"
+    else
+        print_info "DynamoDB table does not exist: $lock_table"
+    fi
+    
+    # Clean up local files
+    if [ -f "infra/backend-config.tfvars" ]; then
+        rm infra/backend-config.tfvars
+        print_success "Removed backend-config.tfvars"
+    fi
+    
+    if [ -f ".env" ]; then
+        rm .env
+        print_success "Removed .env file"
+    fi
     
     echo ""
 }
@@ -323,6 +364,14 @@ main() {
     
     # Cleanup local files
     cleanup_local_files
+    
+    # Clean up Terraform state
+    if [ -d "infra/.terraform" ]; then
+        print_info "Removing Terraform state"
+        rm -rf infra/.terraform
+        rm -f infra/.terraform.lock.hcl
+        print_success "Terraform state removed"
+    fi
     
     print_header "Teardown Complete"
     print_success "All resources have been destroyed!"

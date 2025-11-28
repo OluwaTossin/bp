@@ -1,7 +1,7 @@
 # Blood Pressure Calculator - CI/CD Pipeline Project
 
 [![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
-[![Tests](https://img.shields.io/badge/tests-55%20passing-brightgreen)](https://github.com/OluwaTossin/bp)
+[![Tests](https://img.shields.io/badge/tests-62%20passing-brightgreen)](https://github.com/OluwaTossin/bp)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)](https://github.com/OluwaTossin/bp)
 [![AWS](https://img.shields.io/badge/AWS-Elastic%20Beanstalk-FF9900?logo=amazon-aws)](https://aws.amazon.com/elasticbeanstalk/)
 [![Terraform](https://img.shields.io/badge/IaC-Terraform-7B42BC?logo=terraform)](https://www.terraform.io/)
@@ -18,6 +18,7 @@ This project demonstrates enterprise-level DevOps practices including:
 - ✅ **Blue-Green Deployment** - Zero-downtime deployments via CNAME swap
 - ✅ **Cloud Monitoring** - CloudWatch logs, metrics, and alarms
 - ✅ **Security Scanning** - Dependency vulnerability checks and OWASP ZAP
+- ✅ **Feature Branch Workflow** - Complete Git workflow with PR integration
 
 ## 🏗️ Architecture
 
@@ -26,7 +27,7 @@ This project demonstrates enterprise-level DevOps practices including:
 │                     GitHub Repository                        │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
 │  │  Application │  │   Tests      │  │  Terraform   │     │
-│  │     Code     │  │  (55 tests)  │  │     IaC      │     │
+│  │     Code     │  │  (62 tests)  │  │     IaC      │     │
 │  └──────────────┘  └──────────────┘  └──────────────┘     │
 └────────────┬────────────────────────────────────────────────┘
              │
@@ -109,51 +110,63 @@ Calculates blood pressure category based on systolic and diastolic values:
 
 **Test Results:**
 ```
-Total Tests:  55 (31 unit + 24 BDD)
-Passed:       55 ✓
+Total Tests:  62 (36 unit + 26 BDD)
+Passed:       62 ✓
 Failed:       0
 Skipped:      0
-Duration:     99ms
+Duration:     101ms
 Coverage:     100% (BloodPressure class)
 ```
 
 **Deliverables:**
 - `BPCalculator/BloodPressure.cs` - Core classification logic
-- `BPCalculator.Tests/BloodPressureTests.cs` - 31 unit tests
+- `BPCalculator.Tests/BloodPressureTests.cs` - 36 unit tests
 - `BPCalculator.Tests/Features/BloodPressureClassification.feature` - BDD scenarios
 - `BPCalculator.Tests/Features/BloodPressureClassificationSteps.cs` - Step definitions
 
 ---
 
-### 🔄 Phase 2: Telemetry & Observability (IN PROGRESS)
-**Status:** Not Started
+### ✅ Phase 2: Telemetry & Observability (COMPLETE)
+**Completed:** November 27, 2025
 
-- [ ] CloudWatch logging with structured logs
-- [ ] Custom metrics for BP calculation tracking
-- [ ] AWS X-Ray integration (optional)
-- [ ] Logging middleware configuration
+- [x] CloudWatch logging with structured logs
+- [x] Custom metrics for BP calculation tracking
+- [x] Logging middleware configuration
+- [x] CloudWatch log group: `bp-calculator-logs`
+- [x] Integration validated with 62/62 tests passing
 
 ---
 
-### ⏳ Phase 3: Terraform Infrastructure (PENDING)
+### ✅ Phase 3: Terraform Infrastructure (COMPLETE)
+**Completed:** November 27, 2025
 
-- [ ] Create Terraform directory structure
-- [ ] Define AWS resources (EB, S3, IAM roles)
-- [ ] Configure staging and production environments
-- [ ] Apply infrastructure with `terraform apply`
+- [x] Created Terraform directory structure (10 configuration files)
+- [x] Defined AWS resources (EB, S3, IAM roles, CloudWatch, SNS)
+- [x] Configured staging and production environments
+- [x] Applied infrastructure with `terraform apply`
+- [x] 16+ AWS resources deployed successfully
+
+**Deployed Resources:**
+- Elastic Beanstalk Application & Environment
+- S3 buckets (artifacts)
+- IAM roles and instance profiles
+- CloudWatch log groups and alarms
+- SNS topics for alerting
+- Security groups and network configuration
 
 ---
 
 ### ✅ Phase 4: CI Pipeline (COMPLETE)
+**Completed:** November 27, 2025
 
 **GitHub Actions CI Pipeline - All Quality Gates Passing:**
 
 - [x] Created `.github/workflows/ci.yml` with 4 parallel jobs
-- [x] **build-and-test**: 55/55 tests passing (31 unit + 24 BDD)
+- [x] **build-and-test**: 62/62 tests passing (36 unit + 26 BDD)
 - [x] **security-scan**: Zero vulnerabilities detected
 - [x] **code-quality**: Code formatting compliance
 - [x] **summary**: Aggregate quality gate enforcement
-- [x] Code coverage: 19% overall (100% on core BloodPressure.cs)
+- [x] Code coverage: 100% on core BloodPressure.cs
 - [x] Test reporting with automated GitHub check runs
 - [x] Coverage reports (HTML + Markdown)
 - [x] Triggers: Push/PR to main/develop, manual dispatch
@@ -161,6 +174,7 @@ Coverage:     100% (BloodPressure class)
 ---
 
 ### ✅ Phase 5: CD Pipeline with AWS Deployment (COMPLETE)
+**Completed:** November 27, 2025
 
 **Infrastructure Deployed & Application Running:**
 
@@ -177,12 +191,23 @@ Coverage:     100% (BloodPressure class)
 
 ---
 
-### ⏳ Phase 6: New Feature (≤30 Lines) (PENDING)
+### ✅ Phase 6: New Feature (≤30 Lines) (COMPLETE)
+**Completed:** November 27, 2025
 
-- [ ] User Story: Category explanation text
-- [ ] Implementation with tests
-- [ ] Feature branch workflow demonstration
-- [ ] Pull request with CI checks
+- [x] User Story: BP category explanation text
+- [x] Implementation: 23 lines (GetCategoryExplanation method + UI)
+- [x] Feature branch: `feature/category-explanation`
+- [x] Tests added: 7 new tests (5 unit + 2 BDD)
+- [x] Pull Request #1: Created and merged
+- [x] CI validation: All checks passed
+- [x] CD deployment: Deployed to staging
+- [x] Feature live: http://bp-calculator-staging.eba-gb3zir6t.eu-west-1.elasticbeanstalk.com
+
+**Feature Details:**
+- Added health guidance text for each BP category
+- Integrated with existing UI using Bootstrap alerts
+- Full test coverage maintained (62/62 tests passing)
+- Demonstrated complete feature branch workflow
 
 ---
 
