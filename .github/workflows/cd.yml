@@ -116,11 +116,14 @@ jobs:
     - name: Terraform Init
       run: |
         cd infra
+        ENV="${{ github.event.inputs.environment || 'staging' }}"
+        # Use separate state files for each environment
         terraform init \
           -backend-config="bucket=bp-terraform-state-1764230215" \
-          -backend-config="key=bp-calculator/terraform.tfstate" \
+          -backend-config="key=bp-calculator/${ENV}/terraform.tfstate" \
           -backend-config="region=eu-west-1" \
-          -backend-config="dynamodb_table=bp-terraform-locks"
+          -backend-config="dynamodb_table=bp-terraform-locks" \
+          -reconfigure
     
     - name: Terraform Plan
       id: plan
