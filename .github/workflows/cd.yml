@@ -131,10 +131,11 @@ jobs:
         cd infra
         ENV="${{ github.event.inputs.environment || 'staging' }}"
         # Map 'production' to 'prod' for tfvars filename
+        TFVARS_ENV="$ENV"
         if [ "$ENV" = "production" ]; then
-          ENV="prod"
+          TFVARS_ENV="prod"
         fi
-        terraform plan -var-file="env/${ENV}.tfvars" -out=tfplan
+        terraform plan -var-file="env/${TFVARS_ENV}.tfvars" -out=tfplan
     
     - name: Terraform Apply
       id: apply
