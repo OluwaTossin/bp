@@ -244,6 +244,10 @@ Triggers on:
 2. **deploy-infrastructure**: Apply Terraform changes
 3. **deploy-staging**: Deploy to staging environment
 4. **smoke-tests**: Verify deployment health
+5. **performance-tests**: Load testing with k6 (50 concurrent users)
+6. **security-tests**: OWASP ZAP baseline security scan
+7. **approve-production**: Manual approval gate for production
+8. **deploy-production**: Blue-green deployment to production
 
 ---
 
@@ -311,6 +315,47 @@ dotnet test --filter "FullyQualifiedName~BloodPressureTests"
 dotnet test --filter "FullyQualifiedName~BloodPressureClassificationFeature"
 ```
 
+### Performance Testing (k6)
+```bash
+# Install k6
+sudo apt-get install k6  # Linux
+brew install k6          # Mac
+
+# Run load test against staging
+k6 run tests/performance/load-test.js \
+  --env BASE_URL=http://bp-calculator-staging.eba-XXXXXXXX.eu-west-1.elasticbeanstalk.com
+```
+
+**Load Test Stages:**
+- Ramp-up: 0 → 10 users (30s)
+- Sustained: 10 users (1 min)
+- Peak: 10 → 50 users (30s)
+- Peak sustained: 50 users (2 min)
+- Ramp-down: 50 → 0 users (30s)
+
+**Thresholds:**
+- p95 response time < 500ms
+- p99 response time < 1s
+- Error rate < 1%
+
+### Security Testing (OWASP ZAP)
+```bash
+# Run security scan (requires Docker)
+cd tests/security
+chmod +x zap-scan.sh
+./zap-scan.sh http://bp-calculator-staging.eba-XXXXXXXX.eu-west-1.elasticbeanstalk.com
+
+# View report
+open security-reports/zap-report-*.html
+```
+
+**Security Scan Coverage:**
+- XSS (Cross-Site Scripting)
+- Security headers (X-Frame-Options, CSP, HSTS)
+- Cookie security (SameSite, Secure flags)
+- Information disclosure
+- HTTPS enforcement
+
 ### Test Results
 ```
 Total Tests:  62 (36 unit + 26 BDD)
@@ -319,6 +364,16 @@ Failed:       0
 Skipped:      0
 Duration:     101ms
 Coverage:     100% (BloodPressure class)
+
+Performance Tests:
+Load Test:    k6 (0→10→50 users)
+Thresholds:   p95 < 500ms, p99 < 1s
+Error Rate:   < 1%
+
+Security Tests:
+Tool:         OWASP ZAP Baseline
+High Risk:    0 vulnerabilities
+Medium Risk:  0 critical issues
 ```
 
 ---

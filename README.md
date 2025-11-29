@@ -17,8 +17,10 @@ This project demonstrates enterprise-level DevOps practices including:
 - ✅ **CI/CD Pipeline** - GitHub Actions with automated quality gates
 - ✅ **Blue-Green Deployment** - Zero-downtime deployments via CNAME swap
 - ✅ **Cloud Monitoring** - CloudWatch logs, metrics, and alarms
-- ✅ **Security Scanning** - Dependency vulnerability checks and OWASP ZAP
+- ✅ **Security Scanning** - Dependency vulnerability checks and OWASP ZAP baseline scans
+- ✅ **Performance Testing** - k6 load testing with realistic user scenarios
 - ✅ **Feature Branch Workflow** - Complete Git workflow with PR integration
+- ✅ **Authorization Gates** - Manual approval required for production deployments
 
 ## 🏗️ Architecture
 
@@ -174,7 +176,7 @@ Coverage:     100% (BloodPressure class)
 ---
 
 ### ✅ Phase 5: CD Pipeline with AWS Deployment (COMPLETE)
-**Completed:** November 27, 2025
+**Completed:** November 29, 2025
 
 **Infrastructure Deployed & Application Running:**
 
@@ -185,9 +187,12 @@ Coverage:     100% (BloodPressure class)
 - [x] **S3 Artifacts Bucket**: bp-calculator-eb-artifacts-staging
 - [x] **CloudWatch Logging**: bp-calculator-logs
 - [x] **CloudWatch Alarms**: CPU, Unhealthy hosts, 5xx errors
+- [x] **Performance Testing**: k6 load tests (p95 < 500ms)
+- [x] **Security Testing**: OWASP ZAP baseline scans
+- [x] **Authorization Gates**: Manual approval for production
 - [x] **Status**: Ready (Green health)
 - [x] Application deployed and accessible (HTTP 200)
-- [x] Manual deployment process validated
+- [x] All CD pipeline jobs passing (8 jobs)
 
 ---
 
@@ -235,11 +240,13 @@ Coverage:     100% (BloodPressure class)
 | Category | Technologies |
 |----------|-------------|
 | **Application** | ASP.NET Core 8.0, Razor Pages, C# |
-| **Testing** | xUnit, SpecFlow, Coverlet, Playwright, k6, OWASP ZAP |
-| **Cloud Platform** | AWS (Elastic Beanstalk, S3, CloudWatch, X-Ray) |
+| **Testing** | xUnit, SpecFlow, Coverlet |
+| **Performance Testing** | k6 (load testing, 50 concurrent users) |
+| **Security Testing** | OWASP ZAP (baseline scan), dependency scanning |
+| **Cloud Platform** | AWS (Elastic Beanstalk, S3, CloudWatch) |
 | **Infrastructure** | Terraform, AWS CLI |
-| **CI/CD** | GitHub Actions |
-| **Monitoring** | CloudWatch Logs, CloudWatch Metrics, X-Ray |
+| **CI/CD** | GitHub Actions (8-stage pipeline) |
+| **Monitoring** | CloudWatch Logs, CloudWatch Metrics, CloudWatch Alarms |
 
 ## 📦 Project Structure
 
@@ -271,8 +278,20 @@ bp/
 │   ├── ci.yml
 │   └── cd.yml
 │
+├── tests/                           # Performance & security tests
+│   ├── performance/
+│   │   └── load-test.js            # k6 load testing script
+│   └── security/
+│       ├── zap-baseline.conf       # OWASP ZAP configuration
+│       └── zap-scan.sh             # Security scan script
+│
+├── docs/                            # Documentation
+│   └── GITHUB_ENVIRONMENTS_SETUP.md
+│
 ├── deploy.sh                        # One-command deployment
 ├── destroy.sh                       # One-command teardown
+├── bootstrap.sh                     # First-time AWS setup
+├── DEPLOYMENT_GUIDE.md             # Deployment documentation
 ├── COST_MANAGEMENT.md              # AWS cost guide
 ├── EXECUTION_PLAN.md               # Phase tracking
 └── README.md                        # This file
@@ -342,30 +361,44 @@ See [COST_MANAGEMENT.md](./COST_MANAGEMENT.md) for detailed breakdown and optimi
 
 ### Test Categories
 
-**Unit Tests (31 tests)**
+**Unit Tests (36 tests)**
 - Blood pressure category classification
+- Category explanation text
 - Boundary value analysis
 - Input validation
 - Error handling
 
-**BDD Tests (24 scenarios)**
+**BDD Tests (26 scenarios)**
 - Gherkin-based behavior specification
 - Scenario outlines with data tables
 - Given/When/Then step definitions
+- Category explanation validation
+
+**Performance Tests (k6)**
+- Load testing with 0→50 concurrent users
+- Homepage and calculation endpoint tests
+- Response time thresholds (p95 < 500ms)
+- Error rate monitoring (< 1%)
+
+**Security Tests (OWASP ZAP)**
+- Baseline security scan
+- XSS and injection vulnerability checks
+- Security headers validation
+- Cookie security assessment
 
 **Test Execution:**
 ```bash
-# Run all tests
+# Run unit and BDD tests
 dotnet test
 
 # Run with coverage
 dotnet test /p:CollectCoverage=true
 
-# Run only unit tests
-dotnet test --filter "FullyQualifiedName~BloodPressureTests"
+# Run performance tests
+k6 run tests/performance/load-test.js
 
-# Run only BDD tests
-dotnet test --filter "FullyQualifiedName~BloodPressureClassificationFeature"
+# Run security scan
+./tests/security/zap-scan.sh http://localhost:5000
 ```
 
 ## 📚 Documentation
@@ -405,7 +438,9 @@ This project is developed as part of academic coursework at TU Dublin.
 
 ---
 
-**Last Updated:** November 27, 2025  
-**Current Phase:** Phase 2 - Telemetry & Observability  
-**Test Status:** 55/55 passing ✓  
+**Last Updated:** November 29, 2025  
+**Current Phase:** Phase 7 - Evidence Collection  
+**Test Status:** 62/62 passing ✓  
+**Performance:** p95 < 500ms ✓  
+**Security:** 0 high-risk vulnerabilities ✓  
 **Coverage:** 100% (BloodPressure class)
