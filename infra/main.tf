@@ -121,7 +121,7 @@ resource "aws_iam_role_policy" "ec2_custom_policy" {
           "logs:PutLogEvents",
           "logs:DescribeLogStreams"
         ]
-        Resource = "arn:aws:logs:${var.aws_region}:*:log-group:bp-calculator-logs:*"
+        Resource = "arn:aws:logs:${var.aws_region}:*:log-group:${var.app_name}-logs-${var.environment}:*"
       },
       {
         Effect = "Allow"
@@ -312,11 +312,11 @@ resource "aws_elastic_beanstalk_environment" "env" {
 
 # CloudWatch Log Group for Application Logs
 resource "aws_cloudwatch_log_group" "app_logs" {
-  name              = "bp-calculator-logs"
+  name              = "${var.app_name}-logs-${var.environment}"
   retention_in_days = 7
 
   tags = {
-    Name        = "bp-calculator-logs"
+    Name        = "${var.app_name}-logs-${var.environment}"
     Environment = var.environment
   }
 }
