@@ -1,5 +1,5 @@
 environment   = "prod"
-instance_type = "t2.micro"  # Free tier eligible
+instance_type = "t3.micro"  # Free tier eligible (preferred in eu-west-1)
 min_instances = 1
 max_instances = 4
 
