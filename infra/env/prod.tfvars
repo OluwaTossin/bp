@@ -1,5 +1,5 @@
 environment   = "prod"
-instance_type = "t2.small"
+instance_type = "t2.micro"  # Free tier eligible
 min_instances = 1
 max_instances = 4
 
