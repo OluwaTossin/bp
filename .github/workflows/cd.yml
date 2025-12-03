@@ -551,9 +551,8 @@ jobs:
     - name: Get production environment name
       id: get-env
       run: |
-        # For now, production uses same version as staging
-        # In full blue-green, this would deploy to a separate environment first
-        echo "env_name=${{ env.APPLICATION_NAME }}-production" >> $GITHUB_OUTPUT
+        # Use the environment name from Terraform outputs
+        echo "env_name=${{ needs.deploy-infrastructure.outputs.eb-environment-name }}" >> $GITHUB_OUTPUT
     
     - name: Upload to S3
       run: |
@@ -563,7 +562,7 @@ jobs:
     - name: Create EB Application Version
       run: |
         aws elasticbeanstalk create-application-version \
-          --application-name ${{ env.APPLICATION_NAME }} \
+          --application-name ${{ needs.deploy-infrastructure.outputs.application-name }} \
           --version-label ${{ needs.build-package.outputs.version-label }} \
           --source-bundle S3Bucket="${{ needs.deploy-infrastructure.outputs.s3-bucket }}",S3Key="${{ needs.build-package.outputs.artifact-key }}" \
           --description "Production deployment - Commit ${GITHUB_SHA:0:7}"
