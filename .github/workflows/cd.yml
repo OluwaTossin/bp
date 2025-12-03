@@ -100,6 +100,7 @@ jobs:
     outputs:
       eb-environment-name: ${{ steps.tf-output.outputs.environment_name }}
       s3-bucket: ${{ steps.tf-output.outputs.s3_bucket }}
+      application-name: ${{ steps.tf-output.outputs.application_name }}
     
     steps:
     - name: Checkout code
@@ -154,9 +155,11 @@ jobs:
         cd infra
         echo "environment_name=$(terraform output -raw environment_name)" >> $GITHUB_OUTPUT
         echo "s3_bucket=$(terraform output -raw s3_bucket_name)" >> $GITHUB_OUTPUT
+        echo "application_name=$(terraform output -raw application_name)" >> $GITHUB_OUTPUT
         echo "environment_url=$(terraform output -raw environment_url)" >> $GITHUB_OUTPUT
         
         echo "### Terraform Outputs" >> $GITHUB_STEP_SUMMARY
+        echo "- Application: $(terraform output -raw application_name)" >> $GITHUB_STEP_SUMMARY
         echo "- Environment: $(terraform output -raw environment_name)" >> $GITHUB_STEP_SUMMARY
         echo "- URL: $(terraform output -raw environment_url)" >> $GITHUB_STEP_SUMMARY
         echo "- S3 Bucket: $(terraform output -raw s3_bucket_name)" >> $GITHUB_STEP_SUMMARY
@@ -192,7 +195,7 @@ jobs:
     - name: Create EB Application Version
       run: |
         aws elasticbeanstalk create-application-version \
-          --application-name ${{ env.APPLICATION_NAME }} \
+          --application-name ${{ needs.deploy-infrastructure.outputs.application-name }} \
           --version-label ${{ needs.build-package.outputs.version-label }} \
           --source-bundle S3Bucket="${{ needs.deploy-infrastructure.outputs.s3-bucket }}",S3Key="${{ needs.build-package.outputs.artifact-key }}" \
           --description "Deployed from GitHub Actions - Commit ${GITHUB_SHA:0:7}"
