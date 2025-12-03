@@ -3,6 +3,11 @@ name: CD - Deploy to AWS
 on:
   push:
     branches: [ main ]
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+      - 'README.md'
+      - 'DEPLOYMENT_GUIDE.md'
   workflow_dispatch:  # Allow manual trigger
     inputs:
       environment:
