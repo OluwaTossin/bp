@@ -176,23 +176,34 @@ Coverage:     100% (BloodPressure class)
 ---
 
 ### ✅ Phase 5: CD Pipeline with AWS Deployment (COMPLETE)
-**Completed:** November 29, 2025
+**Completed:** December 4, 2025
 
 **Infrastructure Deployed & Application Running:**
 
-- [x] Created `.github/workflows/cd.yml` for automated deployments
-- [x] Deployed Terraform infrastructure to AWS (16+ resources)
-- [x] **Elastic Beanstalk Environment**: bp-calculator-staging (t3.micro)
-- [x] **Application URL**: http://bp-calculator-staging.eba-gb3zir6t.eu-west-1.elasticbeanstalk.com
-- [x] **S3 Artifacts Bucket**: bp-calculator-eb-artifacts-staging
-- [x] **CloudWatch Logging**: bp-calculator-logs
+- [x] Created `.github/workflows/cd.yml` for automated deployments (7-job pipeline)
+- [x] Deployed Terraform infrastructure to AWS (16+ resources per environment)
+- [x] **Staging Environment**: bp-calculator-staging (t3.micro)
+- [x] **Staging URL**: http://bp-calculator-staging.eba-i4p69s48.eu-west-1.elasticbeanstalk.com
+- [x] **Production Environment**: bp-calculator-prod (t3.micro)
+- [x] **Production URL**: http://bp-calculator-prod.eba-3mgpqk3d.eu-west-1.elasticbeanstalk.com
+- [x] **S3 Artifacts Buckets**: Separate per environment
+- [x] **CloudWatch Logging**: Environment-specific log groups
 - [x] **CloudWatch Alarms**: CPU, Unhealthy hosts, 5xx errors
-- [x] **Performance Testing**: k6 load tests (p95 < 500ms)
-- [x] **Security Testing**: OWASP ZAP baseline scans
-- [x] **Authorization Gates**: Manual approval for production
-- [x] **Status**: Ready (Green health)
+- [x] **Performance Testing**: k6 load tests (p95 < 500ms ✅)
+- [x] **Security Testing**: OWASP ZAP baseline scans (0 high-risk vulnerabilities ✅)
+- [x] **Authorization Gates**: Manual approval for production (GitHub Environments)
+- [x] **Blue-Green Deployment**: Zero-downtime via EB rolling updates
+- [x] **Status**: Both environments Green (Healthy)
 - [x] Application deployed and accessible (HTTP 200)
-- [x] All CD pipeline jobs passing (8 jobs)
+- [x] All CD pipeline jobs passing (7 jobs)
+
+**Key Improvements:**
+- Separate Terraform state files per environment (no resource conflicts)
+- Dynamic application names from Terraform outputs
+- Environment-specific resources (S3, CloudWatch, IAM)
+- Automated staging deployment on push to main
+- Manual production deployment with approval gate
+- Comprehensive testing (smoke, performance, security)
 
 ---
 
@@ -288,9 +299,6 @@ bp/
 ├── docs/                            # Documentation
 │   └── GITHUB_ENVIRONMENTS_SETUP.md
 │
-├── deploy.sh                        # One-command deployment
-├── destroy.sh                       # One-command teardown
-├── bootstrap.sh                     # First-time AWS setup
 ├── DEPLOYMENT_GUIDE.md             # Deployment documentation
 ├── COST_MANAGEMENT.md              # AWS cost guide
 ├── EXECUTION_PLAN.md               # Phase tracking
@@ -310,7 +318,7 @@ bp/
 1. **Clone the repository:**
    ```bash
    git clone git@github.com:OluwaTossin/bp.git
-   cd bp
+   cd bp/bp-source
    ```
 
 2. **Run the application:**
@@ -330,19 +338,41 @@ bp/
    dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura
    ```
 
-### Deployment
+### Automated Deployment via GitHub Actions
 
-**Deploy to AWS:**
+**Staging Deployment (Automatic):**
 ```bash
-./deploy.sh staging    # Deploy to staging
-./deploy.sh prod       # Deploy to production
-./deploy.sh all        # Deploy both environments
+# Push to main triggers automatic deployment
+git push origin main
 ```
 
-**Destroy infrastructure:**
+**Production Deployment (Manual with Approval):**
+1. Go to **Actions** → **CD - Deploy to AWS**
+2. Click **Run workflow**
+3. Select environment: **production**
+4. After tests pass, approve in GitHub Environments
+5. Production deployment completes
+
+### Environment URLs
+- **Staging**: http://bp-calculator-staging.eba-i4p69s48.eu-west-1.elasticbeanstalk.com
+- **Production**: http://bp-calculator-prod.eba-3mgpqk3d.eu-west-1.elasticbeanstalk.com
+
+### Manual Deployment (Alternative)
+
+For manual infrastructure management, use the provided scripts:
+
 ```bash
-./destroy.sh all       # Destroy all resources
+# Deploy to staging
+./deploy.sh staging
+
+# Deploy to production
+./deploy.sh prod
+
+# Destroy staging environment
+./destroy.sh staging
 ```
+
+See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) for detailed manual deployment instructions.
 
 ## 📈 Cost Estimation
 
@@ -403,30 +433,31 @@ k6 run tests/performance/load-test.js
 
 ## 📚 Documentation
 
-- [ASSIGNMENT.md](./ASSIGNMENT.md) - Original project requirements
-- [EXECUTION_PLAN.md](./EXECUTION_PLAN.md) - Detailed phase-by-phase plan with checkboxes
+- [EXECUTION_PLAN.md](./EXECUTION_PLAN.md) - Detailed implementation plan and progress tracking
 - [COST_MANAGEMENT.md](./COST_MANAGEMENT.md) - AWS cost analysis and optimization
+- [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) - Manual deployment procedures
+- [.github/workflows/CD_README.md](./.github/workflows/CD_README.md) - CI/CD pipeline documentation
+- [deploy.sh](./deploy.sh) - One-command deployment script
+- [destroy.sh](./destroy.sh) - Infrastructure teardown script
 
 ## 🤝 Contributing
-
-This is an academic project for TU Dublin M.Sc. in Computing (DevOps). 
 
 ### Git Workflow
 - **main** - Production-ready code
 - **feature/** - Feature branches for new functionality
 - Pull requests required for all changes to main
+- All changes must pass CI/CD pipeline before merging
 
 ## 📄 License
 
-This project is developed as part of academic coursework at TU Dublin.
+This project is available for demonstration and portfolio purposes.
 
 ## 👤 Author
 
 **Oluwatosin**
 - GitHub: [@OluwaTossin](https://github.com/OluwaTossin)
-- Course: M.Sc. in Computing (DevOps)
-- Institution: TU Dublin
-- Module: CSD - Continuous Software Delivery
+- Role: DevOps Engineer
+- Specialization: Cloud Infrastructure & CI/CD Automation
 
 ## 🎯 Project Goals
 
@@ -438,10 +469,12 @@ This project is developed as part of academic coursework at TU Dublin.
 
 ---
 
-**Last Updated:** November 29, 2025  
+**Last Updated:** December 4, 2025  
 **Current Phase:** Phase 7 - Evidence Collection  
 **Test Status:** 62/62 passing ✓  
 **Performance:** p95 < 500ms ✓  
 **Security:** 0 high-risk vulnerabilities ✓  
-**Coverage:** 100% (BloodPressure class)
+**Coverage:** 100% (BloodPressure class)  
+**Staging:** Live and healthy ✓  
+**Production:** Live and healthy ✓
 

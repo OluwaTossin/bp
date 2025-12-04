@@ -1,9 +1,11 @@
 #!/bin/bash
 
-###############################################################################
-# Blood Pressure Calculator - One-Command Deployment Script
-# Usage: ./deploy.sh [staging|prod|all]
-###############################################################################
+#######################################################
+# Blood Pressure Calculator - Deployment Script
+# 
+# One-command deployment to AWS via Terraform
+# Supports staging and production environments
+#######################################################
 
 set -e  # Exit on error
 
@@ -14,24 +16,26 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Load environment configuration if exists
-if [ -f ".env" ]; then
-    source .env
-fi
-
 # Configuration
-APP_NAME="${APP_NAME:-bp-calculator}"
-REGION="${AWS_REGION:-eu-west-1}"
-ENVIRONMENT=${1:-staging}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+INFRA_DIR="${SCRIPT_DIR}/infra"
+APP_DIR="${SCRIPT_DIR}/BPCalculator"
 
-###############################################################################
-# Helper Functions
-###############################################################################
+# Default values
+ENVIRONMENT=""
+AUTO_APPROVE=""
+SKIP_BUILD=""
+
+#######################################################
+# Functions
+#######################################################
 
 print_header() {
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${BLUE}  $1${NC}"
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo -e "${BLUE}========================================${NC}"
+    echo -e "${BLUE}  BP Calculator - Deployment${NC}"
+    echo -e "${BLUE}========================================${NC}"
+    echo ""
 }
 
 print_success() {
@@ -42,278 +46,373 @@ print_error() {
     echo -e "${RED}✗ $1${NC}"
 }
 
+print_warning() {
+    echo -e "${YELLOW}⚠ $1${NC}"
+}
+
 print_info() {
-    echo -e "${YELLOW}ℹ $1${NC}"
+    echo -e "${BLUE}ℹ $1${NC}"
+}
+
+usage() {
+    cat << EOF
+Usage: $0 <environment> [options]
+
+Deploy Blood Pressure Calculator to AWS
+
+ARGUMENTS:
+    environment     Environment to deploy (staging|prod|all)
+
+OPTIONS:
+    --auto-approve  Skip confirmation prompts
+    --skip-build    Skip application build step
+    -h, --help      Show this help message
+
+EXAMPLES:
+    # Deploy to staging
+    $0 staging
+
+    # Deploy to production with auto-approval
+    $0 prod --auto-approve
+
+    # Deploy to both environments
+    $0 all
+
+    # Quick deploy (skip build)
+    $0 staging --skip-build
+
+ENVIRONMENTS:
+    staging     Deploy to staging environment (auto-approve after tests)
+    prod        Deploy to production environment (manual approval required)
+    all         Deploy to both staging and production
+
+PREREQUISITES:
+    - AWS CLI configured with credentials
+    - Terraform installed (>= 1.0)
+    - .NET 8.0 SDK (if not skipping build)
+    - S3 backend: bp-terraform-state-1764230215
+    - DynamoDB table: bp-terraform-locks
+
+NOTES:
+    - Separate Terraform state files per environment
+    - State files: bp-calculator/{staging|production}/terraform.tfstate
+    - Both environments use t3.micro instances (free tier)
+    - CloudWatch logs: bp-calculator-logs-{staging|prod}
+
+EOF
 }
 
 check_prerequisites() {
-    print_header "Checking Prerequisites"
-    
-    # Check for required tools
-    local tools=("dotnet" "aws" "terraform" "zip")
-    local missing_tools=()
-    
-    for tool in "${tools[@]}"; do
-        if command -v $tool &> /dev/null; then
-            print_success "$tool is installed"
-        else
-            print_error "$tool is not installed"
-            missing_tools+=("$tool")
-        fi
-    done
-    
-    if [ ${#missing_tools[@]} -gt 0 ]; then
-        print_error "Missing required tools: ${missing_tools[*]}"
+    print_info "Checking prerequisites..."
+
+    # Check AWS CLI
+    if ! command -v aws &> /dev/null; then
+        print_error "AWS CLI not found. Please install: https://aws.amazon.com/cli/"
         exit 1
     fi
-    
+
     # Check AWS credentials
-    if aws sts get-caller-identity &> /dev/null; then
-        print_success "AWS credentials configured"
-    else
-        print_error "AWS credentials not configured"
-        echo ""
-        print_info "Run: aws configure"
+    if ! aws sts get-caller-identity &> /dev/null; then
+        print_error "AWS credentials not configured. Run: aws configure"
         exit 1
     fi
-    
-    # Check if bootstrap is needed
-    if [ ! -f "infra/backend-config.tfvars" ] || [ ! -f ".env" ]; then
-        print_info "First-time setup detected"
-        echo ""
-        read -p "Run bootstrap script to set up AWS backend? (yes/no): " run_bootstrap
-        
-        if [ "$run_bootstrap" = "yes" ]; then
-            if [ -f "bootstrap.sh" ]; then
-                print_info "Running bootstrap..."
-                bash bootstrap.sh
-                echo ""
-                print_success "Bootstrap complete. Continuing with deployment..."
-                echo ""
-                # Reload environment
-                if [ -f ".env" ]; then
-                    source .env
-                fi
-            else
-                print_error "bootstrap.sh not found"
-                exit 1
-            fi
-        else
-            print_error "Bootstrap required for first deployment"
-            print_info "Run: ./bootstrap.sh"
+
+    # Check Terraform
+    if ! command -v terraform &> /dev/null; then
+        print_error "Terraform not found. Please install: https://www.terraform.io/downloads"
+        exit 1
+    fi
+
+    # Check .NET SDK (if not skipping build)
+    if [[ -z "$SKIP_BUILD" ]]; then
+        if ! command -v dotnet &> /dev/null; then
+            print_error ".NET SDK not found. Please install .NET 8.0 SDK"
             exit 1
         fi
     fi
-    
-    echo ""
+
+    # Check infra directory exists
+    if [[ ! -d "$INFRA_DIR" ]]; then
+        print_error "Infrastructure directory not found: $INFRA_DIR"
+        exit 1
+    fi
+
+    print_success "All prerequisites met"
 }
 
 build_application() {
-    print_header "Building Application"
-    
-    # Restore dependencies
-    print_info "Restoring dependencies..."
-    dotnet restore
-    
-    # Build application
+    if [[ -n "$SKIP_BUILD" ]]; then
+        print_warning "Skipping application build (--skip-build)"
+        return
+    fi
+
     print_info "Building application..."
+
+    cd "$APP_DIR"
+
+    # Restore dependencies
+    dotnet restore
+
+    # Build in Release mode
     dotnet build --configuration Release --no-restore
-    
+
     # Run tests
     print_info "Running tests..."
-    dotnet test --configuration Release --no-build --verbosity normal
-    
-    # Publish application
-    print_info "Publishing application..."
-    dotnet publish -c Release -o publish/
-    
-    # Create deployment package
-    print_info "Creating deployment package..."
-    cd publish
-    zip -r ../bp-app-$(git rev-parse --short HEAD).zip .
-    cd ..
-    
-    print_success "Application built successfully"
-    echo ""
+    dotnet test --configuration Release --no-build --verbosity minimal
+
+    cd "$SCRIPT_DIR"
+
+    print_success "Application built and tested successfully"
 }
 
 deploy_infrastructure() {
     local env=$1
-    print_header "Deploying Infrastructure: $env"
+    local tfvars_file=""
+    local state_env=""
+
+    # Map environment names
+    if [[ "$env" == "staging" ]]; then
+        tfvars_file="env/staging.tfvars"
+        state_env="staging"
+    elif [[ "$env" == "prod" ]]; then
+        tfvars_file="env/prod.tfvars"
+        state_env="production"
+    else
+        print_error "Invalid environment: $env"
+        exit 1
+    fi
+
+    print_info "Deploying infrastructure to: $env"
     
-    cd infra
-    
-    # Initialize Terraform if needed
-    if [ ! -d ".terraform" ]; then
-        print_info "Initializing Terraform..."
-        if [ -f "backend-config.tfvars" ]; then
-            terraform init -backend-config=backend-config.tfvars
-        else
-            print_error "backend-config.tfvars not found. Run bootstrap.sh first."
-            exit 1
+    cd "$INFRA_DIR"
+
+    # Initialize Terraform with environment-specific state
+    print_info "Initializing Terraform (state: bp-calculator/$state_env/terraform.tfstate)..."
+    terraform init -reconfigure \
+        -backend-config="key=bp-calculator/$state_env/terraform.tfstate"
+
+    # Validate configuration
+    print_info "Validating Terraform configuration..."
+    terraform validate
+
+    # Plan
+    print_info "Planning infrastructure changes..."
+    terraform plan -var-file="$tfvars_file" -out=tfplan
+
+    # Confirm before apply (unless auto-approve)
+    if [[ -z "$AUTO_APPROVE" ]]; then
+        echo ""
+        read -p "Apply infrastructure changes for $env? (yes/no): " confirm
+        if [[ "$confirm" != "yes" ]]; then
+            print_warning "Deployment cancelled by user"
+            rm -f tfplan
+            exit 0
         fi
     fi
-    
-    # Plan infrastructure
-    print_info "Planning infrastructure changes..."
-    terraform plan -var-file="env/${env}.tfvars" -out="${env}.tfplan"
-    
-    # Apply infrastructure
-    print_info "Applying infrastructure..."
-    terraform apply "${env}.tfplan"
-    
-    # Save outputs
-    terraform output -json > "../outputs/${env}-outputs.json"
-    
-    cd ..
-    
-    print_success "Infrastructure deployed: $env"
+
+    # Apply
+    print_info "Applying infrastructure changes..."
+    terraform apply tfplan
+
+    rm -f tfplan
+
+    # Get outputs
+    print_info "Infrastructure outputs:"
     echo ""
+    terraform output
+
+    cd "$SCRIPT_DIR"
+
+    print_success "Infrastructure deployed to $env"
 }
 
 deploy_application() {
     local env=$1
-    print_header "Deploying Application: $env"
-    
-    local version=$(git rev-parse --short HEAD)
-    
-    # Get bucket name from Terraform outputs
-    if [ ! -f "outputs/${env}-outputs.json" ]; then
-        print_error "Terraform outputs not found. Deploy infrastructure first."
+    local app_name=""
+    local eb_env_name=""
+
+    # Map environment names
+    if [[ "$env" == "staging" ]]; then
+        app_name="bp-calculator-staging"
+        eb_env_name="bp-calculator-staging"
+    elif [[ "$env" == "prod" ]]; then
+        app_name="bp-calculator-prod"
+        eb_env_name="bp-calculator-prod"
+    else
+        print_error "Invalid environment: $env"
         exit 1
     fi
-    
-    local bucket_name=$(cat outputs/${env}-outputs.json | jq -r '.app_bucket_name.value')
-    if [ -z "$bucket_name" ] || [ "$bucket_name" = "null" ]; then
-        print_error "Could not get bucket name from Terraform outputs"
+
+    print_info "Deploying application to: $env"
+
+    cd "$APP_DIR"
+
+    # Publish application
+    print_info "Publishing application..."
+    dotnet publish --configuration Release --output ./publish
+
+    # Create deployment package
+    print_info "Creating deployment package..."
+    VERSION_LABEL="v$(date +%Y%m%d-%H%M%S)-manual"
+    cd publish
+    zip -r "../${VERSION_LABEL}.zip" .
+    cd ..
+
+    # Get S3 bucket name from Terraform outputs
+    cd "$INFRA_DIR"
+    S3_BUCKET=$(terraform output -raw s3_bucket_name 2>/dev/null || echo "")
+    cd "$SCRIPT_DIR"
+
+    if [[ -z "$S3_BUCKET" ]]; then
+        print_error "Could not get S3 bucket name from Terraform outputs"
         exit 1
     fi
-    
-    local env_name="${APP_NAME}-${env}"
-    
-    # Check if deployment package exists
-    if [ ! -f "bp-app-${version}.zip" ]; then
-        print_error "Deployment package not found: bp-app-${version}.zip"
-        print_info "Run build_application first"
-        exit 1
-    fi
-    
+
     # Upload to S3
-    print_info "Uploading application to S3..."
-    aws s3 cp "bp-app-${version}.zip" "s3://${bucket_name}/bp-app-${version}.zip" --region "$REGION"
-    
+    print_info "Uploading to S3: $S3_BUCKET"
+    aws s3 cp "$APP_DIR/${VERSION_LABEL}.zip" "s3://$S3_BUCKET/${VERSION_LABEL}.zip"
+
     # Create application version
     print_info "Creating Elastic Beanstalk application version..."
     aws elasticbeanstalk create-application-version \
-        --application-name "$APP_NAME" \
-        --version-label "$version" \
-        --source-bundle "S3Bucket=${bucket_name},S3Key=bp-app-${version}.zip" \
-        --region "$REGION"
-    
+        --application-name "$app_name" \
+        --version-label "$VERSION_LABEL" \
+        --source-bundle S3Bucket="$S3_BUCKET",S3Key="${VERSION_LABEL}.zip" \
+        --description "Manual deployment - $(date '+%Y-%m-%d %H:%M:%S')"
+
     # Deploy to environment
-    print_info "Deploying to Elastic Beanstalk environment..."
+    print_info "Deploying to Elastic Beanstalk environment: $eb_env_name"
     aws elasticbeanstalk update-environment \
-        --environment-name "$env_name" \
-        --version-label "$version" \
-        --region "$REGION"
-    
+        --application-name "$app_name" \
+        --environment-name "$eb_env_name" \
+        --version-label "$VERSION_LABEL"
+
     # Wait for deployment
-    print_info "Waiting for environment to be ready..."
+    print_info "Waiting for deployment to complete (this may take 3-5 minutes)..."
     aws elasticbeanstalk wait environment-updated \
-        --environment-names "$env_name" \
-        --region "$REGION"
-    
+        --application-name "$app_name" \
+        --environment-names "$eb_env_name"
+
+    # Clean up
+    rm -f "$APP_DIR/${VERSION_LABEL}.zip"
+    rm -rf "$APP_DIR/publish"
+
     # Get environment URL
-    local url=$(aws elasticbeanstalk describe-environments \
-        --environment-names "$env_name" \
-        --region "$REGION" \
-        --query "Environments[0].CNAME" \
+    ENV_URL=$(aws elasticbeanstalk describe-environments \
+        --application-name "$app_name" \
+        --environment-names "$eb_env_name" \
+        --query 'Environments[0].CNAME' \
         --output text)
-    
-    print_success "Application deployed: $env"
-    print_info "URL: http://${url}"
-    echo ""
+
+    cd "$SCRIPT_DIR"
+
+    print_success "Application deployed to $env"
+    print_success "Environment URL: http://$ENV_URL"
 }
 
-run_health_check() {
+deploy_environment() {
     local env=$1
-    print_header "Running Health Check: $env"
-    
-    local env_name="${APP_NAME}-${env}"
-    local url=$(aws elasticbeanstalk describe-environments \
-        --environment-names "$env_name" \
-        --region "$REGION" \
-        --query "Environments[0].CNAME" \
-        --output text)
-    
-    print_info "Checking http://${url}"
-    
-    # Try to connect
-    if curl -s -o /dev/null -w "%{http_code}" "http://${url}" | grep -q "200\|302"; then
-        print_success "Health check passed"
-    else
-        print_error "Health check failed"
-    fi
-    
+
+    echo ""
+    print_info "=========================================="
+    print_info "  Deploying to: $env"
+    print_info "=========================================="
+    echo ""
+
+    # Deploy infrastructure
+    deploy_infrastructure "$env"
+
+    echo ""
+
+    # Deploy application
+    deploy_application "$env"
+
+    echo ""
+    print_success "✓ Deployment to $env complete!"
     echo ""
 }
 
-###############################################################################
-# Main Deployment Logic
-###############################################################################
+#######################################################
+# Main Script
+#######################################################
 
-main() {
-    print_header "BP Calculator Deployment"
-    echo -e "Environment: ${GREEN}${ENVIRONMENT}${NC}"
-    echo -e "Region: ${BLUE}${REGION}${NC}"
-    echo ""
-    
-    # Check prerequisites
-    check_prerequisites
-    
-    # Build application
-    build_application
-    
-    # Create outputs directory
-    mkdir -p outputs
-    
-    # Deploy based on environment parameter
-    case $ENVIRONMENT in
-        staging)
-            deploy_infrastructure "staging"
-            deploy_application "staging"
-            run_health_check "staging"
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        staging|prod|all)
+            ENVIRONMENT=$1
+            shift
             ;;
-        prod|production)
-            deploy_infrastructure "prod"
-            deploy_application "prod"
-            run_health_check "prod"
+        --auto-approve)
+            AUTO_APPROVE="true"
+            shift
             ;;
-        all)
-            deploy_infrastructure "staging"
-            deploy_application "staging"
-            run_health_check "staging"
-            
-            deploy_infrastructure "prod"
-            deploy_application "prod"
-            run_health_check "prod"
+        --skip-build)
+            SKIP_BUILD="true"
+            shift
+            ;;
+        -h|--help)
+            usage
+            exit 0
             ;;
         *)
-            print_error "Invalid environment: $ENVIRONMENT"
-            echo "Usage: ./deploy.sh [staging|prod|all]"
+            print_error "Unknown option: $1"
+            usage
             exit 1
             ;;
     esac
-    
-    print_header "Deployment Complete"
-    print_success "All deployments completed successfully!"
-    echo ""
-    print_info "Next steps:"
-    echo "  - Run E2E tests: npm test"
-    echo "  - Check CloudWatch logs: aws logs tail /aws/elasticbeanstalk/${APP_NAME}-${ENVIRONMENT}"
-    echo "  - Monitor metrics in AWS Console"
-    echo ""
-}
+done
 
-# Run main function
-main
+# Validate environment argument
+if [[ -z "$ENVIRONMENT" ]]; then
+    print_error "Environment argument required"
+    usage
+    exit 1
+fi
+
+# Main execution
+print_header
+
+check_prerequisites
+
+build_application
+
+# Deploy based on environment
+case $ENVIRONMENT in
+    staging)
+        deploy_environment "staging"
+        ;;
+    prod)
+        if [[ -z "$AUTO_APPROVE" ]]; then
+            print_warning "Deploying to PRODUCTION environment"
+            read -p "Are you sure you want to deploy to production? (yes/no): " confirm
+            if [[ "$confirm" != "yes" ]]; then
+                print_warning "Deployment cancelled"
+                exit 0
+            fi
+        fi
+        deploy_environment "prod"
+        ;;
+    all)
+        deploy_environment "staging"
+        echo ""
+        print_info "Staging deployment complete. Proceeding to production..."
+        sleep 2
+        deploy_environment "prod"
+        ;;
+esac
+
+echo ""
+print_success "=========================================="
+print_success "  Deployment Complete!"
+print_success "=========================================="
+echo ""
+
+print_info "Next steps:"
+print_info "1. Verify application health in AWS Console"
+print_info "2. Check CloudWatch logs for any errors"
+print_info "3. Test application functionality"
+print_info "4. Monitor CloudWatch alarms"
+echo ""
+
+exit 0

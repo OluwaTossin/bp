@@ -386,6 +386,9 @@ appsettings.*.json
 # Evidence & Documentation
 ###############################################################################
 
+# Assignment and academic documentation
+ASSIGNMENT.md
+
 # Evidence collection
 evidence/
 screenshots/

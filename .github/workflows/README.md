@@ -40,8 +40,8 @@ This directory contains GitHub Actions workflows for automated CI/CD pipelines.
    - Warn on code quality issues
 
 **Quality Gates:**
-- ✅ All 55 tests must pass
-- ✅ Code coverage ≥ 80%
+- ✅ All 62 tests must pass (36 unit + 26 BDD)
+- ✅ Code coverage ≥ 80% (100% on BloodPressure.cs)
 - ✅ No high/critical security vulnerabilities
 - ⚠️ No build warnings (warning only)
 - ⚠️ Code formatting follows .NET conventions (warning only)
@@ -51,8 +51,69 @@ This directory contains GitHub Actions workflows for automated CI/CD pipelines.
 - Coverage report (HTML + Markdown)
 - Vulnerability scan report
 
-### cd.yml - Continuous Deployment (Phase 5)
-Coming in Phase 5 - Deploys to AWS Elastic Beanstalk with blue-green strategy.
+### cd.yml - Continuous Deployment
+**Triggers:**
+- Push to `main` branch (automatic staging deployment)
+- Manual workflow dispatch with environment selection
+- Paths-ignore: Documentation files (*.md, docs/**)
+
+**Jobs (7-Stage Pipeline):**
+
+1. **build-package**
+   - Build .NET 8.0 application
+   - Run all 62 tests (36 unit + 26 BDD)
+   - Create deployment package (.zip)
+   - Upload as artifact
+
+2. **deploy-infrastructure**
+   - Initialize Terraform with environment-specific state
+   - Apply infrastructure changes
+   - Output: environment-name, application-name, s3-bucket
+
+3. **deploy-application**
+   - Upload package to S3
+   - Create EB application version
+   - Deploy with rolling updates (blue-green)
+   - Wait for deployment completion
+
+4. **smoke-tests**
+   - Validate HTTP 200 on home page
+   - Test BP calculation endpoint
+   - Check CloudWatch logs
+
+5. **performance-tests**
+   - k6 load testing (0→50 concurrent users)
+   - Quality gates: p95<500ms, error rate<1%
+   - Custom metrics: pageLoadTime, calculationTime
+
+6. **security-tests**
+   - OWASP ZAP baseline scan
+   - Check for XSS, injection, CSRF vulnerabilities
+   - Fail on high-risk vulnerabilities
+
+7. **approve-production**
+   - Manual approval gate (GitHub Environments)
+   - Only for production deployments
+   - Shows deployment summary before approval
+
+**Quality Gates:**
+- ✅ All 62 tests must pass
+- ✅ Infrastructure deployment successful
+- ✅ Smoke tests pass (HTTP 200)
+- ✅ Performance: p95 < 500ms
+- ✅ Security: 0 high-risk vulnerabilities
+- ✅ Manual approval for production
+
+**Artifacts:**
+- Deployment package (.zip)
+- Performance test results
+- Security scan report
+
+**Live Environments:**
+- Staging: http://bp-calculator-staging.eba-i4p69s48.eu-west-1.elasticbeanstalk.com
+- Production: http://bp-calculator-prod.eba-3mgpqk3d.eu-west-1.elasticbeanstalk.com
+
+See [CD_README.md](./CD_README.md) for detailed documentation.
 
 ## 🚀 Usage
 
@@ -123,7 +184,7 @@ Edit `.github/workflows/ci.yml` and commit changes. Workflows update automatical
 ### CI Fails on Tests
 - Check test output in workflow logs
 - Run tests locally: `dotnet test --verbosity normal`
-- Verify all 55 tests pass locally
+- Verify all 62 tests pass locally (36 unit + 26 BDD)
 
 ### Coverage Below Threshold
 - Check which files have low coverage
